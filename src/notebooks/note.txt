@@ -1,0 +1,17 @@
+select a.en_alias_lowercase || " " || j.en_description from joined as j join aliases a on j.item_id = a.item_id where j.item_id = 30 limit 10;
+
+select en_label || en_description from joined as j join aliases a on j.item_id = a.item_id where j.item_id = 30 limit 10;
+
+item_id|en_label|en_description|page_id|views|inlinks
+
+CREATE TABLE IF NOT EXISTS wikidata_concepts_vectors
+             (wikidata_id INTEGER, wikipedia_page_id INTEGER, text TEXT, vector BLOB)
+             
+INSERT INTO wikidata_concepts_vectors (wikidata_id, wikipedia_page_id, text)
+SELECT wikidata_id, wikipedia_page_id, en_label ||' '|| en_description
+FROM joined 
+
+CREATE TABLE IF NOT EXISTS wikidata_concepts_vectors_2
+             (wik)
+SELECT column1, column2
+FROM table2;
