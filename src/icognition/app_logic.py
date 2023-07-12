@@ -52,24 +52,25 @@ def find_wikidata_id(kp: Keyphrase, session: Session):
         print(distance)
 
 
-def create_bookmark(page: Page):
+def create_bookmark(page: Page) -> Bookmark:
 
     session = Session(engine)
 
-    # Create boomark if not exists
-    if session.scalar(select(Bookmark).where(Bookmark.url == page.clean_url)):
-        logging.info('Bookmark already exists')
-        # return None
-
-    bookmark = Bookmark()
-    bookmark.url = page.clean_url
-    bookmark.title = page.title
-    bookmark.update_at = datetime.datetime.now()
-
-    # Create document
-    if session.scalar(select(Document).where(Document.url == page.clean_url)):
+    # Check if document exists, retrieve the bookmark and keyphrases and return
+    # if exists. Else, create the document, bookmark and keyphrase.
+    # TODO: Bookmark need to be associate with user
+    doc = session.scalar(select(Document).where(
+        Document.url == page.clean_url))
+    if doc:
+        bookmark = session.scalar(
+            select(Bookmark).where(Bookmark.document_id == doc.id))
+        keyphrases = session.scalars(
+            select(Keyphrase).where(Keyphrase.document_id == doc.id))
         logging.info('Document already exists')
-        # return None
+
+        # If bookmark and keyphrase exist return the bookmark
+        if bookmark and len(keyphrases) > 0:
+            return bookmark
 
     doc = Document()
     doc.title = page.title
@@ -79,22 +80,37 @@ def create_bookmark(page: Page):
     doc.summary_generated = summarizer(
         paragraphs, summary_length='first_chunk')[0]
 
-    print(doc.summary_generated)
+    session.add(doc)
+    session.commit()
+
+    # Create bookmark
+    # Create boomark if not exists
+    if session.scalar(select(Bookmark).where(Bookmark.url == page.clean_url)):
+        logging.info('Bookmark already exists')
+        # return None
+
+    bookmark = Bookmark()
+    bookmark.url = page.clean_url
+    bookmark.title = page.title
+    bookmark.update_at = datetime.datetime.now()
+    bookmark.document_id = doc.id
+
+    session.add(bookmark)
+    session.commit()
+
+    logging.info(
+        f'Bookmark and document created. Document id {doc.id}. Bookmark id {bookmark.id}')
 
     keyphrases = [Keyphrase(**kp)
                   for kp in keyphrase_extractor(page.full_text)]
 
     for k in keyphrases:
-        find_wikidata_id(k, session)
+        k.document_id = doc.id
 
-    doc.keyphrases = keyphrases
-
-    bookmark.document = doc
-
-    # session.add(bookmark)
-    # session.add(doc)
-    # session.add_all(keyphrases)
-    # session.commit()
+    session.add_all(keyphrases)
+    session.commit()
+    logging.info(
+        f"Added {len(keyphrases)} keyphrases to database for document {doc.url}")
 
     session.close()
     return bookmark

@@ -45,13 +45,13 @@ class ItemVector(Base):
 
 
 class Bookmark(Base):
+    # TODO Add user_id to Bookmark
     __tablename__ = "bookmarks"
     __table_args__ = {"schema": "bmks", "extend_existing": True}
     id = mapped_column(Integer, primary_key=True)
-    url = mapped_column(String(255), unique=True)
+    url = mapped_column(String(255))
     update_at = mapped_column(TIMESTAMP, onupdate=func.now())
-    document = relationship("Document",  uselist=False,
-                            back_populates="bookmarks")
+    document_id = mapped_column(Integer)
 
 
 class Document(Base):
@@ -59,13 +59,10 @@ class Document(Base):
     __table_args__ = {"schema": "bmks", "extend_existing": True}
     id = mapped_column(Integer, primary_key=True)
     title = mapped_column(String(255))
-    url = mapped_column(String(255), unique=True)
+    url = mapped_column(String(255))
     authors = mapped_column(ARRAY(String, dimensions=1))
     summary_generated = mapped_column(TEXT)
     publication_date = mapped_column(DATE())
-    bookmark_id = mapped_column(ForeignKey("bmks.bookmarks.id"))
-    bookmarks = relationship("Bookmark", back_populates="document")
-    keyphrases = relationship("Keyphrase", back_populates="document")
 
 
 class Keyphrase(Base):
@@ -73,14 +70,15 @@ class Keyphrase(Base):
     __table_args__ = {"schema": "bmks", "extend_existing": True}
     id = mapped_column(Integer, primary_key=True)
     word = mapped_column(String())
+    word_vec = mapped_column(Vector(384))
     start = mapped_column(Integer)
     end = mapped_column(Integer)
     score = mapped_column(FLOAT)
     type = mapped_column(String())
     entity_group = mapped_column(String(50))
     context = mapped_column(String(255))
-    document = relationship("Document", back_populates="keyphrases")
-    Document_id = mapped_column(ForeignKey("bmks.documents.id"))
+    context_vec = mapped_column(Vector(384))
+    document_id = mapped_column(Integer)
 
 
 engine = create_engine('postgresql+psycopg2://app:2214@localhost/icognition')
