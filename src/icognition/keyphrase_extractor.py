@@ -5,7 +5,13 @@ from transformers import (
     AutoTokenizer
 )
 from icog_util import remove_stop_words, translator
+from sentence_transformers import SentenceTransformer
 import torch
+
+
+stantance_model_name = "paraphrase-MiniLM-L6-v2"
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+sentence_transformer = SentenceTransformer(stantance_model_name, device=device)
 
 
 class KeyphraseExtractionPipeline(TokenClassificationPipeline):
@@ -39,13 +45,16 @@ class KeyphraseExtraction:
         self.pipeline = KeyphraseExtractionPipeline(
             model_name=model_name, device=self.device)
 
-    def add_context_to_keyphrase(self, keyphrase, text, wordpeding=3):
+    def extract_context(self, keyphrase, text, wordpeding=3) -> str:
         """This method adds context to the keyphrases by looking at the text before and after the keyphrases.
 
         Args:
             keyphrase: dictionary that contains the keyphrase from KeyphraseExtractionPipeline
             text (str): text from which the keyphrases were extracted
+        Retrurn: 
+            String that contains the context of the keyphrase
         """
+        context = ''
         if (len(keyphrase['word'].split(' ')) <= 2):
             start_pos = keyphrase['start']
             end_pos = keyphrase['end']
@@ -61,11 +70,11 @@ class KeyphraseExtraction:
             if (len(before.split(' ')) > wordpeding):
                 before = ' '.join(before.split(' ')[-wordpeding:])
 
-            keyphrase['context'] = f"{before} {keyword} {after}"
+            context = f"{before} {keyword} {after}"
         else:
-            keyphrase['context'] = keyphrase['word']
+            context = keyphrase['word']
 
-        return keyphrase
+        return context
 
     def __call__(self, text) -> list:
         """This method extracts keyphrases from text.
@@ -77,7 +86,11 @@ class KeyphraseExtraction:
         for keyphrase in keyphrases:
             # Cast score to float to prevent JSON serialization errors and database problems
             keyphrase['score'] = float(keyphrase['score'])
-            self.add_context_to_keyphrase(keyphrase, text)
+            keyphrase['context'] = self.extract_context(keyphrase, text)
+            keyphrase['word_vec'] = sentence_transformer.encode(
+                keyphrase['word'], show_progress_bar=False)
+            keyphrase['context_vec'] = sentence_transformer.encode(
+                keyphrase['context'], show_progress_bar=False)
 
         return keyphrases
 
