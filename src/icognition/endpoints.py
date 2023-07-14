@@ -2,11 +2,12 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from icog_util import Page
-from db_util import Bookmark, Document
+from db_util import Bookmark, Document, Keyphrase
 import logging
 import sys
 import uvicorn
 import json
+import app_logic
 
 logging.basicConfig(stream=sys.stdout, format='%(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
@@ -27,21 +28,26 @@ async def validation_exception_handler(request, exc):
 
 
 @app.post("/bookmark")
-async def bookmark(page: Page):
+async def bookmark(page: Page) -> Bookmark:
     file_name = f'../data/icog_pages/{page.clean_url}.json'
     with open(file_name, "w") as fp:
         json.dump(page.dict(), fp)
 
     logging.info(f"Icognition bookmark endpoint called on {Page.url}")
 
-    sentences = list(page.paragraphs.values())
-    chunks = concatenate_sentences_to_chunks(sentences)
+    bookmark = app_logic.create_bookmark(page)
+    return bookmark
 
-    results = []
-    for chunk in chunks:
-        summary = pszemraj_summarizer(chunk)
-        results.append(summary[0]['summary_text'])
 
-    page.summarized_paragraphs = results
+@app.post("/document")
+async def document(id: int) -> Document:
+    logging.info(f"Icognition document endpoint called on {id}")
+    document = app_logic.get_document(id)
+    return document
 
-    return page
+
+@app.post("/keyphrase")
+async def keyphrase(id: int) -> Keyphrase:
+    logging.info(f"Icognition keyphrase endpoint called on {id}")
+    keyphrases = app_logic.get_document_keyphrases(id)
+    return keyphrases
