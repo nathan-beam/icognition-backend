@@ -1,8 +1,5 @@
-
 from stop_words import get_stop_words
 from nltk.tokenize import word_tokenize
-from typing import Union
-from pydantic import BaseModel
 import logging
 import sys
 import string
@@ -32,21 +29,6 @@ def remove_stop_words(string, return_format='String'):
         return filtered_tokens
     else:
         return ' '.join(filtered_tokens)
-
-
-class textBlob(BaseModel):
-    source: Union[str, None] = None
-    text: str
-
-
-class Page(BaseModel):
-    url: Union[str, None] = None
-    title: Union[str, None] = None
-    clean_url: Union[str, None] = None
-    paragraphs: Union[dict, None] = None
-    summarized_paragraphs: Union[list, None] = None
-    key_concepts: Union[list, None] = None
-    full_text: Union[str, None] = None
 
 
 if __name__ == '__main__':

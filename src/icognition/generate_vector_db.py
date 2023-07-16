@@ -6,7 +6,7 @@ import pandas as pd
 import logging as log
 import sys
 import os
-from db_util import engine, Item, ItemVector
+from icognition.db_models import engine, Item, ItemVector
 from timeit import default_timer as timer
 from keyphrase_extractor import KeyphraseExtraction
 from icog_util import remove_stop_words

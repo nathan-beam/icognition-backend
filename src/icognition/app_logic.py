@@ -3,8 +3,8 @@ import datetime
 import sys
 import logging
 import torch
-from db_util import Bookmark, Document, Keyphrase, ItemVector
-from icog_util import Page
+from db_models import Bookmark, Document, Keyphrase, ItemVector
+from pydantic_models import Page
 from transformer_text_summarizer import Summarizer
 from keyphrase_extractor import KeyphraseExtraction
 from pgvector.sqlalchemy import Vector
@@ -52,11 +52,12 @@ def find_wikidata_id(kp: Keyphrase, session: Session):
         print(distance)
 
 
-def delete_document_and_associate_records(document_id):
+def delete_document_and_associate_records(document_id) -> None:
     """
     This function deletes a document and all associated records from the database. 
     This function was create for testing purposes. 
     """
+    logging.info(f"Deleting document {document_id} and associated records")
     session = Session(engine)
     session.execute(delete(Document).where(Document.id == document_id))
     session.execute(delete(Keyphrase).where(
@@ -65,6 +66,7 @@ def delete_document_and_associate_records(document_id):
         Bookmark.document_id == document_id))
     session.commit()
     session.close()
+    logging.info(f"Document {document_id} and associated records deleted")
 
 
 def get_document_by_id(document_id) -> Document:
@@ -83,7 +85,7 @@ def get_document_by_url(url) -> Document:
     return doc
 
 
-def get_document_keyphrases_by_id(document_id) -> Keyphrase:
+def get_keyphrases_by_document_id(document_id) -> Keyphrase:
     session = Session(engine)
     keyphrases = session.scalars(select(Keyphrase).where(
         Keyphrase.document_id == document_id)).all()
@@ -91,7 +93,7 @@ def get_document_keyphrases_by_id(document_id) -> Keyphrase:
     return keyphrases
 
 
-def get_document_keyphrases_by_url(url) -> list[Keyphrase]:
+def get_keyphrases_by_document_url(url) -> list[Keyphrase]:
     session = Session(engine)
     stmt = select(Keyphrase).join(
         Document, Keyphrase.document_id == Document.id).where(
