@@ -150,6 +150,12 @@ def create_bookmark(page: Page) -> Bookmark:
     session.add(bookmark)
     session.commit()
 
+    # Storing the bookmark and document id in variable
+    # to be use to get a fresh bookmark for the funtion return
+    # This is to avoid the error: DetachedInstanceError
+    bookmark_id = bookmark.id
+    document_id = doc.id
+
     logging.info(
         f'Bookmark and document created. Document id {doc.id}. Bookmark id {bookmark.id}')
 
@@ -164,7 +170,11 @@ def create_bookmark(page: Page) -> Bookmark:
     logging.info(
         f"Added {len(keyphrases)} keyphrases to database for document {doc.url}")
 
+    bookmark = session.scalar(select(Bookmark).where(
+        Bookmark.id == bookmark_id, Bookmark.document_id == document_id))
+
     session.close()
+
     return bookmark
 
 
