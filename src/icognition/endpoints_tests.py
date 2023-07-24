@@ -6,9 +6,8 @@ import requests
 
 base_url = 'http://localhost:8889'
 
-path_file = '/home/eboraks/Projects/icognition-backend/data/icog_pages/bergum.medium.com%2Ffour-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5.json'
-with open(path_file, 'r') as f:
-    jpage = json.load(f)
+url = "https://bergum.medium.com/four-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5#tour"
+payload = {"url": url}
 
 # Unit test for create bookmart
 
@@ -21,7 +20,7 @@ class TestEndpoints(unittest.TestCase):
     # check response status code
     # check response content
     def test_create_bookmark(self):
-        response = requests.post(f"{base_url}/bookmark", json=jpage)
+        response = requests.post(f"{base_url}/bookmark", json=payload)
         self.assertIsNotNone(response.json()['id'])
 
     """
@@ -29,15 +28,15 @@ class TestEndpoints(unittest.TestCase):
     """
 
     def test_get_document(self):
-        response = requests.post(f"{base_url}/bookmark", json=jpage)
+        response = requests.post(f"{base_url}/bookmark", json=payload)
         id = response.json()['document_id']
         response = None
         response = requests.get(f"{base_url}/document/{id}")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['url'], jpage['clean_url'])
+        self.assertNotEqual(response.json()['url'], payload['url'])
 
     def test_get_keyphrases(self):
-        response = requests.post(f"{base_url}/bookmark", json=jpage)
+        response = requests.post(f"{base_url}/bookmark", json=payload)
         id = response.json()['document_id']
         response = None
         response = requests.get(f"{base_url}/document/{id}/keyphrases")
@@ -46,11 +45,8 @@ class TestEndpoints(unittest.TestCase):
         self.assertEqual(response.json()[0]['document_id'], id)
 
     def test_full_document_workflow(self):
-        test_file = '/home/eboraks/Projects/icognition-backend/data/icog_pages/bergum-four-mistakes-when-introducing-embeddings-and-vector-search.json'
-        with open(test_file, 'r') as f:
-            page = json.load(f)
 
-        bookmark_res = requests.post(f"{base_url}/bookmark", json=page)
+        bookmark_res = requests.post(f"{base_url}/bookmark", json=payload)
         self.assertEqual(bookmark_res.status_code, 200)
         print(bookmark_res.json())
         id = bookmark_res.json()['document_id']

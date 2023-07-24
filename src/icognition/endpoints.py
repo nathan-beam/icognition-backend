@@ -28,14 +28,17 @@ async def validation_exception_handler(request, exc):
 
 
 @app.post("/bookmark", response_model=pm.Bookmark)
-async def bookmark(page: pm.Page):
+async def bookmark(url: pm.URL):
     """ file_name = f'../data/icog_pages/{page.clean_url}.json'
     with open(file_name, "w") as fp:
         json.dump(page.dict(), fp)
  """
-    logging.info(f"Icognition bookmark endpoint called on {page.clean_url}")
+    logging.info(f"Icognition bookmark endpoint called on {url.url}")
 
-    bookmark = app_logic.create_bookmark(page)
+    page = app_logic.create_page(url.url)
+    logging.info(f"Page created for {page.clean_url}")
+    bookmark = app_logic.generate_bookmark(page)
+    logging.info(f"Bookmark created for {bookmark.url}")
     return bookmark
 
 

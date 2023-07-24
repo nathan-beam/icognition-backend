@@ -1,16 +1,16 @@
 import unittest
-import icog_util as util
+from pydantic_models import Page
 import app_logic
 import json
+import icog_util as util
 from embed_wikidata_labels import add_context_to_wikidata_label
 from keyphrase_extractor import KeyphraseExtraction
 from transformer_text_summarizer import Summarizer
 from keyphrase_extractor import KeyphraseExtraction
 
-path_file = '/home/eboraks/Projects/icognition_backend/data/icog_pages/bergum.medium.com%2Ffour-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5.json'
-with open(path_file, 'r') as f:
-    jpage = json.load(f)
-    page = util.Page(**jpage)
+
+url = "https://bergum.medium.com/four-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5#tour"
+page = app_logic.create_page(url)
 
 summarizer = Summarizer()
 keyphrase_extractor = KeyphraseExtraction()
@@ -52,17 +52,16 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(len(keyphrase_extractor(text)), 3)
 
     def test_summarize_paragraphs(self):
-        paragraphs = [v for k, v in jpage['paragraphs'].items()]
-        summaries = summarizer(paragraphs)
+        summaries = summarizer(page.paragraphs)
         self.assertEqual(len(summaries), 3)
 
     def test_summarize_paragraphs_short(self):
-        paragraphs = [v for k, v in jpage['paragraphs'].items()]
-        summaries = summarizer(paragraphs, summary_length='first_chunk')
+
+        summaries = summarizer(page.paragraphs, summary_length='first_chunk')
         self.assertEqual(len(summaries), 1)
 
-    def test_create_bookmark(self):
-        global_bookmark = app_logic.create_bookmark(page)
+    def test_generate_bookmark(self):
+        global_bookmark = app_logic.generate_bookmark(page)
         self.assertEqual(global_bookmark.url, page.clean_url)
 
     def test_get_document(self):
@@ -70,10 +69,16 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(document.url, page.clean_url)
 
     def test_get_keyphrase(self):
-        keyphrases = app_logic.get_document_keyphrases_by_url(
+        keyphrases = app_logic.get_keyphrases_by_document_url(
             page.clean_url)
         print(f'Number of keyphrases: {len(keyphrases)}')
         self.assertGreater(len(keyphrases), 3)
+
+    def test_create_page(self):
+        page = app_logic.create_page(url)
+        self.assertNotEqual(page.clean_url, url)
+        self.assertIsNotNone(page.paragraphs)
+        self.assertIsNotNone(page.title)
 
 
 if __name__ == '__main__':
