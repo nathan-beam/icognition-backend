@@ -1,8 +1,8 @@
-import json
 import datetime
 import sys
 import logging
 import torch
+import html_parser
 from db_models import Bookmark, Document, Keyphrase, ItemVector
 from pydantic_models import Page
 from transformer_text_summarizer import Summarizer
@@ -103,7 +103,26 @@ def get_keyphrases_by_document_url(url) -> list[Keyphrase]:
     return keyphrases
 
 
-def create_bookmark(page: Page) -> Bookmark:
+def create_page(url) -> Page:
+    url = html_parser.clean_url(url)
+    html = html_parser.get_webpage(url)
+    paragraphs = html_parser.get_paragraphs(html)
+
+    if (paragraphs is None):
+        logging.error("No paragraphs found in webpage")
+        return None
+
+    title = html_parser.get_title(html)
+
+    page = Page()
+    page.clean_url = url
+    page.paragraphs = paragraphs
+    page.title = title
+
+    return page
+
+
+def generate_bookmark(page: Page) -> Bookmark:
 
     session = Session(engine)
 
@@ -128,9 +147,8 @@ def create_bookmark(page: Page) -> Bookmark:
     doc.title = page.title
     doc.url = page.clean_url
 
-    paragraphs = [v for k, v in page.paragraphs.items()]
     doc.summary_generated = summarizer(
-        paragraphs, summary_length='first_chunk')[0]
+        page.paragraphs, summary_length='first_chunk')[0]
 
     session.add(doc)
     session.commit()
@@ -159,8 +177,9 @@ def create_bookmark(page: Page) -> Bookmark:
     logging.info(
         f'Bookmark and document created. Document id {doc.id}. Bookmark id {bookmark.id}')
 
+    full_text = '\n'.join(page.paragraphs)
     keyphrases = [Keyphrase(**kp)
-                  for kp in keyphrase_extractor(page.full_text)]
+                  for kp in keyphrase_extractor(full_text)]
 
     for k in keyphrases:
         k.document_id = doc.id
@@ -179,10 +198,4 @@ def create_bookmark(page: Page) -> Bookmark:
 
 
 if __name__ == '__main__':
-    path_file = '/home/eboraks/Projects/icognition_backend/data/icog_pages/bergum.medium.com%2Ffour-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5.json'
-    """ with open(path_file, 'r') as f:
-        jpage = json.load(f)
-        page = Page(**jpage)
-        create_bookmark(page)
-    """
-    delete_document_and_associate_records(3)
+    delete_document_and_associate_records(11)

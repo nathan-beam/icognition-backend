@@ -8,11 +8,14 @@ class textBlob(BaseModel):
     text: str
 
 
+class URL(BaseModel):
+    url: Union[str, None] = None
+
+
 class Page(BaseModel):
     clean_url: Union[str, None] = None
     title: Union[str, None] = None
-    clean_url: Union[str, None] = None
-    paragraphs: Union[dict, None] = None
+    paragraphs: Union[list, None] = None
     full_text: Union[str, None] = None
 
 
