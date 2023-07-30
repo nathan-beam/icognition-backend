@@ -1,6 +1,7 @@
 import unittest
 import json
 import requests
+import urllib.parse as urlparse
 """ Generate unit test for endpoints.py FastAPI functions """
 
 
@@ -23,9 +24,25 @@ class TestEndpoints(unittest.TestCase):
         response = requests.post(f"{base_url}/bookmark", json=payload)
         self.assertIsNotNone(response.json()['id'])
 
+        url = urlparse.quote(payload['url'], safe='')
+        params = {"url": url}
+        response = requests.get(f"{base_url}/bookmark", params=params)
+        document_id = response.json()['document_id']
+        status_code = response.status_code
+        self.assertIsNotNone(document_id)
+        self.assertEqual(status_code, 200)
+
     """
     Unit test to get document using document id from endpoint
     """
+
+    def test_get_bookmark_not_found(self):
+        url = urlparse.quote("https://www.google.com", safe='')
+        params = {"url": url}
+        response = requests.get(f"{base_url}/bookmark", params=params)
+        print(f"Test get bookmark not found response {response.json()}")
+        status_code = response.status_code
+        self.assertEqual(status_code, 404)
 
     def test_get_document(self):
         response = requests.post(f"{base_url}/bookmark", json=payload)
@@ -44,10 +61,13 @@ class TestEndpoints(unittest.TestCase):
         self.assertIsNotNone(response.json()[0])
         self.assertEqual(response.json()[0]['document_id'], id)
 
+    def xtest_page_without_paragraphs(self):
+        payload = {"url": "https://www.google.com"}
+
     def test_full_document_workflow(self):
 
         bookmark_res = requests.post(f"{base_url}/bookmark", json=payload)
-        self.assertEqual(bookmark_res.status_code, 200)
+        self.assertEqual(bookmark_res.status_code, 201)
         print(bookmark_res.json())
         id = bookmark_res.json()['document_id']
         self.assertIsNotNone(id)
