@@ -30,18 +30,6 @@ class Bookmark(BaseModel):
         orm_mode = True
 
 
-class Document(BaseModel):
-    id: Union[int, None] = None
-    title: Union[str, None] = None
-    url: Union[str, None] = None
-    summary_generated: Union[str, None] = None
-    publication_date: Union[str, None] = None
-    authors: Union[list, None] = None
-
-    class Config:
-        orm_mode = True
-
-
 class Keyphrase(BaseModel):
     id: Union[int, None] = None
     word: Union[str, None] = None
@@ -52,6 +40,19 @@ class Keyphrase(BaseModel):
     entity_group: Union[str, None] = None
     context: Union[str, None] = None
     document_id: Union[int, None] = None
+
+    class Config:
+        orm_mode = True
+
+
+class Document(BaseModel):
+    id: Union[int, None] = None
+    title: Union[str, None] = None
+    url: Union[str, None] = None
+    summary_generated: Union[str, None] = None
+    publication_date: Union[str, None] = None
+    authors: Union[list, None] = None
+    keyphrases: Union[list[Keyphrase], None] = None
 
     class Config:
         orm_mode = True

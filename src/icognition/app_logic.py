@@ -197,5 +197,14 @@ def generate_bookmark(page: Page) -> Bookmark:
     return bookmark
 
 
+def get_bookmark_by_url(url: str) -> Bookmark:
+    url = html_parser.clean_url(url)
+    session = Session(engine)
+    bookmark = session.scalar(select(Bookmark).where(
+        Bookmark.url == url))
+    session.close()
+    return bookmark
+
+
 if __name__ == '__main__':
     delete_document_and_associate_records(11)
