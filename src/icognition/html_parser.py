@@ -35,6 +35,7 @@ def get_webpage(url) -> html.HtmlElement:
 
 def get_paragraphs(tree: html.HtmlElement) -> list[str]:
     text = []
+    # //article//h1|//h2|//p[string-length( text()) > 20]|//ul//li[string-length( text()) > 20]
     t = tree.xpath("//article//p|//h2|//h3")
 
     p_counter = 0
