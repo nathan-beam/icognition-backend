@@ -1,5 +1,5 @@
 import unittest
-from icognition.util import Util
+from app.icog_util import Util
 
 
 class TestUtil(unittest.TestCase):

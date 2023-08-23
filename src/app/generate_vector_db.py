@@ -1,12 +1,13 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import select, func
-from sqlalchemy.sql.expression import join
-from icog_util import remove_stop_words
 import pandas as pd
 import logging as log
 import sys
 import os
-from icognition.db_models import engine, Item, ItemVector
+
+from sqlalchemy.orm import Session
+from sqlalchemy import select, func
+from sqlalchemy.sql.expression import join
+from icog_util import remove_stop_words
+from models import Item, ItemVector
 from timeit import default_timer as timer
 from keyphrase_extractor import KeyphraseExtraction
 from icog_util import remove_stop_words
@@ -15,6 +16,7 @@ from sentence_transformers import SentenceTransformer, util
 log.basicConfig(stream=sys.stdout, format='%(asctime)s - %(message)s',
                 level=log.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
+# TODO: Get Engine from db.py
 
 sentance_transformer = SentenceTransformer(
     'paraphrase-MiniLM-L6-v2', device='cpu')

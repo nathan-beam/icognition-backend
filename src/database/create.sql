@@ -39,8 +39,10 @@ CREATE TABLE IF NOT EXISTS wikidata.items_vectors (
 \copy wikidata.items(id, wikipedia_page_id, text, embedding) FROM 'done_embeddings_0_500000.csv' DELIMITER ',' CSV HEADER
 
 CREATE USER app WITH PASSWORD '2214';
-GRANT ALL ON DATABASE icognition TO app;
-GRANT ALL privileges ON SCHEMA wikidata TO app;
+GRANT ALL ON DATABASE icog_db TO app;
+GRANT pg_read_all_data TO app;
+GRANT pg_write_all_data TO app;
+GRANT USAGE ON SCHEMA public TO app;
 
 CREATE SCHEMA IF NOT EXISTS bmks;
 GRANT ALL privileges ON SCHEMA bmks TO app;

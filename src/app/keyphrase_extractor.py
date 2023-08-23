@@ -4,7 +4,7 @@ from transformers import (
     AutoModelForTokenClassification,
     AutoTokenizer
 )
-from icog_util import remove_stop_words, translator
+from app.icog_util import remove_stop_words, translator
 from sentence_transformers import SentenceTransformer
 import torch
 

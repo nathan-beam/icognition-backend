@@ -1,5 +1,5 @@
-from keyphrase_extractor import KeyphraseExtraction
-from icog_util import remove_stop_words
+from app.keyphrase_extractor import KeyphraseExtraction
+from app.icog_util import remove_stop_words
 from sentence_transformers import SentenceTransformer, util
 
 sentance_transformer = SentenceTransformer(

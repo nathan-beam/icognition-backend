@@ -1,12 +1,18 @@
+## Adding package to path
+import sys
+import os
+#dir_path = os.path.dirname(os.path.realpath(__file__))
+#sys.path.append(os.path.realpath(f"{dir_path}/../"))
+
+
+## Importing modules
+from app.transformer_text_summarizer import Summarizer
+from app.keyphrase_extractor import KeyphraseExtraction
+from app.embed_wikidata_labels import add_context_to_wikidata_label
+import app.icog_util as util
+import app.app_logic as app_logic
 import unittest
-from pydantic_models import Page
-import app_logic
-import json
-import icog_util as util
-from embed_wikidata_labels import add_context_to_wikidata_label
-from keyphrase_extractor import KeyphraseExtraction
-from transformer_text_summarizer import Summarizer
-from keyphrase_extractor import KeyphraseExtraction
+
 
 
 url = "https://bergum.medium.com/four-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5#tour"
