@@ -27,10 +27,15 @@ class Bookmark(SQLModel, table=True):
 class Document(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(default=None)
-    url: str
-    authors: List[float] = Field(sa_column=Column(ARRAY(Float)))
+    url: str = Field(default=None)
+    authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=None)
     summary_generated: str = Field(default=None)
     publication_date: datetime = Field(default=None)
+
+
+class ConsolidatedResponse(SQLModel, table=False):
+    keyphrases: Optional[List['Keyphrase']] = Field(default=None)
+    document: Optional[Document] = Field(default=None)
 
 
 class Keyphrase(SQLModel, table=True):
