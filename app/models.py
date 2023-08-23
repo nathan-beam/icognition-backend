@@ -34,16 +34,16 @@ class Document(SQLModel, table=True):
 
 
 class Keyphrase(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(primary_key=True)
     word: str
-    word_vec: List[float] = Field(sa_column=Column(Vector(384)))
+    word_vec: List[float] = Field(sa_column=Column(Vector(384)), default=None)
     start: Optional[int] = Field(default=None)
     end: Optional[int] = Field(default=None)
     score: Optional[float] = Field(default=None)
     type: Optional[str] = Field(default=None)
     entity_group: Optional[str] = Field(default=None)
     context: Optional[str] = Field(default=None)
-    context_vec: List[float] = Field(sa_column=Column(Vector(384)))
+    context_vec: List[float] = Field(sa_column=Column(Vector(384)), default=None)
     document_id: Optional[int] = Field(default=None)
 
 
