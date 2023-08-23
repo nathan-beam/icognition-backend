@@ -2,11 +2,10 @@ import datetime
 import sys
 import logging
 import torch
-import html_parser
-from db_models import Bookmark, Document, Keyphrase, ItemVector
-from pydantic_models import Page
-from transformer_text_summarizer import Summarizer
-from keyphrase_extractor import KeyphraseExtraction
+from app import html_parser
+from app.models import Bookmark, Document, Keyphrase, WD_ItemVector, Page
+from app.transformer_text_summarizer import Summarizer
+from app.keyphrase_extractor import KeyphraseExtraction
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import select, delete, create_engine, Integer, String, func
 from sqlalchemy.orm import Session
@@ -16,7 +15,7 @@ from sentence_transformers import SentenceTransformer, util
 logging.basicConfig(stream=sys.stdout, format='%(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
-engine = create_engine('postgresql+psycopg2://app:2214@localhost/icognition')
+engine = create_engine('postgresql+psycopg2://app:2214@localhost/icog_db')
 
 summarizer = Summarizer()
 keyphrase_extractor = KeyphraseExtraction()
@@ -29,8 +28,8 @@ sentence_transformer = SentenceTransformer(stantance_model_name, device=device)
 def find_wikidata_id(kp: Keyphrase, session: Session):
     vec_query = sentence_transformer.encode(
         kp.context, show_progress_bar=False)
-    items = session.query(ItemVector).order_by(
-        ItemVector.text_vec.cosine_distance(vec_query)).limit(2).all()
+    items = session.query(WD_ItemVector).order_by(
+        WD_ItemVector.text_vec.cosine_distance(vec_query)).limit(2).all()
 
     for item in items:
         distance = util.cos_sim(item.text_vec, vec_query)
@@ -41,8 +40,8 @@ def find_wikidata_id(kp: Keyphrase, session: Session):
 
     vec_query = sentence_transformer.encode(
         kp.word, show_progress_bar=False)
-    items = session.query(ItemVector).order_by(
-        ItemVector.text_vec.cosine_distance(vec_query)).limit(2).all()
+    items = session.query(WD_ItemVector).order_by(
+        WD_ItemVector.text_vec.cosine_distance(vec_query)).limit(2).all()
 
     for item in items:
         distance = util.cos_sim(item.text_vec, vec_query)
@@ -161,7 +160,6 @@ def generate_bookmark(page: Page) -> Bookmark:
 
     bookmark = Bookmark()
     bookmark.url = page.clean_url
-    bookmark.title = page.title
     bookmark.update_at = datetime.datetime.now()
     bookmark.document_id = doc.id
 

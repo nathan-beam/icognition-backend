@@ -6,6 +6,16 @@ from typing import Optional, List
 from datetime import datetime
 
 
+class URL(SQLModel, table=False):
+    url: Optional[str] = Field(default=None)
+
+class Page(SQLModel, table=False):
+    clean_url: Optional[str] = Field(default=None)
+    title: Optional[str] = Field(default=None)
+    paragraphs: Optional[List[str]] = Field(default=None)
+    full_text: Optional[str] = Field(default=None)
+
+
 class Bookmark(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     url: str

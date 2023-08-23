@@ -3,11 +3,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-import pydantic_models as pm
+import app.models as pm
 import logging
 import sys
 import uvicorn
-import app_logic
+import app.app_logic as app_logic
 import urllib.parse as urlparse
 
 
