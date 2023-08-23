@@ -73,7 +73,7 @@ async def get_bookmark(url: str):
     return bookmark
 
 
-@app.get("/document/{id}", response_model=pm.Document)
+@app.get("/document/{id}", response_model=pm.Document, status_code=200)
 async def get_document(id: int, response_model=pm.Document, status_code=200):
     logging.info(f"Icognition document endpoint called on {id}")
     document = app_logic.get_document_by_id(id)
@@ -81,8 +81,6 @@ async def get_document(id: int, response_model=pm.Document, status_code=200):
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    keyphrases = app_logic.get_keyphrases_by_document_id(document.id)
-    document.keyphrases = keyphrases
     return document
 
 
