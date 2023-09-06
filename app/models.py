@@ -9,6 +9,7 @@ from datetime import datetime
 class URL(SQLModel, table=False):
     url: Optional[str] = Field(default=None)
 
+
 class Page(SQLModel, table=False):
     clean_url: Optional[str] = Field(default=None)
     title: Optional[str] = Field(default=None)
@@ -30,6 +31,8 @@ class Document(SQLModel, table=True):
     url: str = Field(default=None)
     authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=None)
     summary_generated: str = Field(default=None)
+    summary_bullet_points: str = Field(default=None)
+    found_entities_raw: str = Field(default=None)
     publication_date: datetime = Field(default=None)
 
 
@@ -48,7 +51,8 @@ class Keyphrase(SQLModel, table=True):
     type: Optional[str] = Field(default=None)
     entity_group: Optional[str] = Field(default=None)
     context: Optional[str] = Field(default=None)
-    context_vec: List[float] = Field(sa_column=Column(Vector(384)), default=None)
+    context_vec: List[float] = Field(
+        sa_column=Column(Vector(384)), default=None)
     document_id: Optional[int] = Field(default=None)
 
 
