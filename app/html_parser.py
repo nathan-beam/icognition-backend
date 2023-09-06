@@ -4,6 +4,7 @@ import sys
 import urllib.parse
 import re
 from lxml import html
+from app.models import Page
 
 logging.basicConfig(format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d:%H:%M:%S',
@@ -87,6 +88,26 @@ def clean_url(url: str) -> str:
     else:
         # Encode the URL and return it
         return clean_url
+
+
+def create_page(url) -> Page:
+    url = clean_url(url)
+    html = get_webpage(url)
+    paragraphs = get_paragraphs(html)
+
+    if (paragraphs is None):
+        logging.error("No paragraphs found in webpage")
+        return None
+
+    title = get_title(html)
+
+    page = Page()
+    page.clean_url = url
+    page.paragraphs = paragraphs
+    page.full_text = "\n".join(paragraphs)
+    page.title = title
+
+    return page
 
 
 if __name__ == "__main__":
