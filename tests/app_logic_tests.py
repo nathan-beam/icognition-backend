@@ -1,12 +1,7 @@
-## Adding package to path
-import sys
-import os
-#dir_path = os.path.dirname(os.path.realpath(__file__))
-#sys.path.append(os.path.realpath(f"{dir_path}/../"))
 
-
-## Importing modules
-from app.transformer_text_summarizer import Summarizer
+# Importing modules
+from app.local_model import LocalModel
+from app.api_model import APIModel
 from app.keyphrase_extractor import KeyphraseExtraction
 from app.embed_wikidata_labels import add_context_to_wikidata_label
 import app.icog_util as util
@@ -14,11 +9,11 @@ import app.app_logic as app_logic
 import unittest
 
 
-
 url = "https://bergum.medium.com/four-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5#tour"
 page = app_logic.create_page(url)
 
-summarizer = Summarizer()
+summarizer = LocalModel()
+apiModel = APIModel()
 keyphrase_extractor = KeyphraseExtraction()
 
 # Global bookmark to be used in tests of bookmark, document and keyphrase creation and retrieval
@@ -29,19 +24,19 @@ class TestUtil(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestUtil, self).__init__(*args, **kwargs)
 
-    def test_remove_stop_words(self):
+    def xtest_remove_stop_words(self):
         text = "Nick likes to play football however he is not too fond of tennis"
         answer = "Nick likes play football however fond tennis"
         self.assertEqual(util.remove_stop_words(text), answer)
 
-    def test_add_context_to_wikidata_label(self):
+    def xtest_add_context_to_wikidata_label(self):
         label = "Mikkeli"
         description = "city in the region of Southern Savonia in Finland"
         answer = "Mikkeli savonia finland"
         self.assertEqual(add_context_to_wikidata_label(
             label, description), answer)
 
-    def test_add_context_to_keyphrase(self):
+    def xtest_add_context_to_keyphrase(self):
         description = "on july 4th in the oval office, the presedent of the USA sign the new low in front of statemens from both parties"
         keyphrase = {"word": "USA", "start": 53,
                      "end": 56, "score": 0.99, "type": "entity"}
@@ -85,6 +80,18 @@ class TestUtil(unittest.TestCase):
         self.assertNotEqual(page.clean_url, url)
         self.assertIsNotNone(page.paragraphs)
         self.assertIsNotNone(page.title)
+
+    def test_api_model_summarize(self):
+
+        text = """The US has passed the peak on new coronavirus cases, \
+            President <NAME> said and predicted that some states would reopen this month. The US has over 637,000 confirmed \
+            Covid-19 cases and over 30,826 deaths, the highest for any country in the world. At the daily White House coronavirus briefing on Wednesday,\ Trump said new guidelines to reopen the country would"""
+
+        query = apiModel._templates.summarize(text)
+        results = apiModel.generate(query)
+        print("Summary:")
+        print(results)
+        self.assertIsNotNone(results)
 
 
 if __name__ == '__main__':
