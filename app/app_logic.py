@@ -4,21 +4,25 @@ import logging
 import torch
 from app import html_parser
 from app.models import Bookmark, Document, Keyphrase, WD_ItemVector, Page
-from app.transformer_text_summarizer import Summarizer
+from app.local_model import LocalModel
+from app.api_model import APIModel
 from app.keyphrase_extractor import KeyphraseExtraction
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import select, delete, create_engine, Integer, String, func
 from sqlalchemy.orm import Session
 from sentence_transformers import SentenceTransformer, util
+from dotenv import dotenv_values
 
 
 logging.basicConfig(stream=sys.stdout, format='%(asctime)s - %(message)s',
                     level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
-engine = create_engine('postgresql+psycopg2://app:2214@localhost/icog_db')
+config = dotenv_values(".env")
 
-summarizer = Summarizer()
-keyphrase_extractor = KeyphraseExtraction()
+engine = create_engine(config['LOCAL_PSQL'])
+
+
+api_model = APIModel()
 
 stantance_model_name = "paraphrase-MiniLM-L6-v2"
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -102,23 +106,8 @@ def get_keyphrases_by_document_url(url) -> list[Keyphrase]:
     return keyphrases
 
 
-def create_page(url) -> Page:
-    url = html_parser.clean_url(url)
-    html = html_parser.get_webpage(url)
-    paragraphs = html_parser.get_paragraphs(html)
-
-    if (paragraphs is None):
-        logging.error("No paragraphs found in webpage")
-        return None
-
-    title = html_parser.get_title(html)
-
-    page = Page()
-    page.clean_url = url
-    page.paragraphs = paragraphs
-    page.title = title
-
-    return page
+def create_page(url: str) -> Page:
+    return html_parser.create_page(url)
 
 
 def generate_bookmark(page: Page) -> Bookmark:
@@ -146,8 +135,17 @@ def generate_bookmark(page: Page) -> Bookmark:
     doc.title = page.title
     doc.url = page.clean_url
 
-    doc.summary_generated = summarizer(
-        page.paragraphs, summary_length='first_chunk')[0]
+    # TODO convert to api_model
+    sum_query = api_model._templates.summarize(page.full_text)
+    doc.summary_generated = api_model.generate(sum_query)
+
+    bp_query = api_model._templates.bullet_points(page.full_text)
+    doc.bullet_points_generated = api_model.generate(bp_query)
+
+    en_query = api_model._templates.people - org - places(page.full_text)
+    doc.found_entities_raw = api_model.generate(en_query)
+
+    doc.update_at = datetime.datetime.now()
 
     session.add(doc)
     session.commit()
