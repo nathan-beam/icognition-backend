@@ -7,7 +7,7 @@ from pgvector.sqlalchemy import Vector
 
 from alembic import context
 
-from app.models import WD_Item, WD_Alias, Document, Bookmark, Keyphrase
+from app.models import WD_Item, WD_Alias, Bookmark, Bookmark, Keyphrase
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
