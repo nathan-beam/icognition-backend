@@ -4,7 +4,7 @@ import string
 import numpy as np
 import math
 
-# from stop_words import get_stop_words
+from stop_words import get_stop_words as stopwords
 from nltk.tokenize import word_tokenize
 from transformers import AutoTokenizer
 from typing import Any, Dict, List, Union
@@ -33,7 +33,7 @@ def remove_stop_words(string, return_format='String'):
         str: string without stop words
     """
     tokens = word_tokenize(string)
-    filtered_tokens = [w for w in tokens if not w in stop_words]
+    filtered_tokens = [w for w in tokens if not w in stopwords]
 
     if (return_format == 'List'):
         return filtered_tokens
@@ -68,7 +68,7 @@ def truncate_text(text: str, tokenizer: AutoTokenizer, summarizer: Summarizer, L
 
         summary = summarizer(parser.document, num_sentences_to_summarize)
         summary_text = " ".join([sentence._text for sentence in summary])
-        summarize_text(summary_text, tokenizer, summarizer, LANGUAGE)
+        truncate_text(summary_text, tokenizer, summarizer, LANGUAGE)
 
     else:
         logging.info("Text is short enough. No need to summarizing.")

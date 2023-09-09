@@ -19,10 +19,11 @@ class Page(SQLModel, table=False):
 
 class Bookmark(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    url: str
+    url: str = Field(nullable=False)
     update_at: datetime = Field(
         default_factory=datetime.utcnow, nullable=False)
     document_id: Optional[int] = Field(default=None, nullable=True)
+    user_id: Optional[int] = Field(default=777, nullable=True)
 
 
 class Document(SQLModel, table=True):
@@ -34,11 +35,14 @@ class Document(SQLModel, table=True):
     summary_bullet_points: str = Field(default=None)
     found_entities_raw: str = Field(default=None)
     publication_date: datetime = Field(default=None)
+    update_at: datetime = Field(
+        default_factory=datetime.utcnow, nullable=True)
+    bookmark_id: int = Field(default=None, nullable=True)
 
 
 class ConsolidatedResponse(SQLModel, table=False):
     keyphrases: Optional[List['Keyphrase']] = Field(default=None)
-    document: Optional[Document] = Field(default=None)
+    document: Optional[Bookmark] = Field(default=None)
 
 
 class Keyphrase(SQLModel, table=True):

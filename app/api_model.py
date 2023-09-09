@@ -3,6 +3,7 @@ import os
 import logging
 import sys
 import re
+import json
 from time import sleep
 from transformers import AutoTokenizer
 from dotenv import dotenv_values
@@ -26,10 +27,10 @@ class LlamaTemplates():
     def summarize(self, body_text: str) -> str:
         return self.clean_text(self.templates['summarize'].format(BODY=body_text))
 
-    def buletPoints(self, body_text: str) -> str:
+    def bullet_points(self, body_text: str) -> str:
         return self.clean_text(self.templates['bullet-points'].format(BODY=body_text))
 
-    def peopleOrgPlaces(self, body_text: str) -> str:
+    def people_org_places(self, body_text: str) -> str:
         return self.clean_text(self.templates['people-org-places'].format(BODY=body_text))
 
     @property
@@ -125,9 +126,9 @@ class APIModel():
                     f"API Call successful. Status code {response.status_code}. Generated text length: {len(answer)}")
                 self._retry_attempts = 0
                 return answer
-            except JSONDecodeError(e):
+            except json.JSONDecodeError:
                 logging.error(f"Error decoding JSON response: {response}")
-                raise JSONDecodeError(e)
+                return None
 
     def generate(self, query) -> str:
 
@@ -143,8 +144,13 @@ class APIModel():
 
         try:
             results = self.api_call(payload)
-            logging.info(
-                f"API Call successful. Returning results. len(results): {len(results)}")
+
+            if results == None:
+                logging.error(f"API Call Error for query: {query[:40]}")
+                return None
+            else:
+                logging.info(
+                    f"API Call successful. Returning results. len(results): {len(results)}")
             return results
         except ResourceWarning as e:
             logging.error(e)

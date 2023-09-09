@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-import app.models as pm
+from app.models import Bookmark, Document, Keyphrase, URL
 import logging
 import sys
 import uvicorn
@@ -18,12 +18,14 @@ app = FastAPI()
 # dpcnaflfhdkdeijjglelioklbghepbig
 origins = [
     "chrome-extension://dpcnaflfhdkdeijjglelioklbghepbig",
+    "chrome-extension://*",
+    "*",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex="chrome-extension://*",  # for development
+    # allow_origin_regex="*",  # "chrome-extension://*",  # for development
     # allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,8 +44,8 @@ async def validation_exception_handler(request, exc):
     return PlainTextResponse(str(request), status_code=400)
 
 
-@app.post("/bookmark", response_model=pm.Bookmark, status_code=201)
-async def create_bookmark(url: pm.URL):
+@app.post("/bookmark", response_model=Bookmark, status_code=201)
+async def create_bookmark(url: URL, response_model=Bookmark, status_code=201):
     """ file_name = f'../data/icog_pages/{page.clean_url}.json'
     with open(file_name, "w") as fp:
         json.dump(page.dict(), fp)
@@ -53,17 +55,19 @@ async def create_bookmark(url: pm.URL):
     page = app_logic.create_page(url.url)
 
     if page is None:
+        logging.warn(f"Page object not created for {url.url}")
         raise HTTPException(
             status_code=204, detail="The webpage doesn't have article and paragraph elements")
-    logging.info(f"Page created for {page.clean_url}")
+
+    logging.info(f"Page object created for {page.clean_url}")
     bookmark = app_logic.generate_bookmark(page)
     logging.info(f"Bookmark created for {bookmark.url}")
     return bookmark
 
 
-@app.get("/bookmark", response_model=pm.Bookmark, status_code=200)
+@app.get("/bookmark", response_model=Bookmark, status_code=200)
 async def get_bookmark(url: str):
-    url = urlparse.unquote(url)
+
     bookmark = app_logic.get_bookmark_by_url(url)
 
     if bookmark is None:
@@ -73,8 +77,21 @@ async def get_bookmark(url: str):
     return bookmark
 
 
-@app.get("/document/{id}", response_model=pm.Document, status_code=200)
-async def get_document(id: int, response_model=pm.Document, status_code=200):
+@app.get("/bookmark/{id}/document", response_model=Document, status_code=200)
+async def get_bookmark_document(id: int):
+
+    logging.info(f"Icognition bookmark document endpoint called on {id}")
+    document = app_logic.get_document_by_bookmark_id(id)
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return document
+
+
+@app.get("/document/{id}", response_model=Document, status_code=200)
+async def get_document(id: int, response_model=Document, status_code=200):
+
     logging.info(f"Icognition document endpoint called on {id}")
     document = app_logic.get_document_by_id(id)
 
@@ -84,7 +101,7 @@ async def get_document(id: int, response_model=pm.Document, status_code=200):
     return document
 
 
-@app.get("/document/{id}/keyphrases", response_model=List[pm.Keyphrase])
+@app.get("/document/{id}/keyphrases", response_model=List[Keyphrase])
 async def get_document_keyphrases(id: int):
     logging.info(
         f"Icognition document keyphrases endpoint called on document {id}")
@@ -93,10 +110,10 @@ async def get_document_keyphrases(id: int):
     return keyphrases
 
 
-@app.delete("/document/{id}/cascade", status_code=204)
-async def delete_document(id: int) -> None:
-    logging.info(f"Icognition delete document endpoint called on {id}")
-    app_logic.delete_document_and_associate_records(id)
+@app.delete("/bookmark/{id}/document", status_code=204)
+async def delete_bookmark(id: int) -> None:
+    logging.info(f"Delete bookmark and associated records for id: {id}")
+    app_logic.delete_bookmark_and_associate_records(id)
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8889)

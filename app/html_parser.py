@@ -1,10 +1,11 @@
 import requests
 import logging
-import sys
-import urllib.parse
 import re
 from lxml import html
 from app.models import Page
+from bs4 import BeautifulSoup
+import urllib.parse as urlparse
+
 
 logging.basicConfig(format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d:%H:%M:%S',
@@ -26,41 +27,44 @@ def get_webpage(url) -> html.HtmlElement:
     """
     try:
         response = requests.get(url)
-        content = response.content
-        tree = html.fromstring(content)
-        return tree
+        content = response.text
+        htmlpage = html.fromstring(content)
+        return htmlpage
     except Exception as e:
-        logging.error(f"Error getting webpage: {e}")
+        logging.error(f"Error getting webpage: {url} with error: {e}")
         return None
 
 
-def get_paragraphs(tree: html.HtmlElement) -> list[str]:
+def get_paragraphs(htmlpage: html.HtmlElement) -> list[str]:
     text = []
-    # //article//h1|//h2|//p[string-length( text()) > 20]|//ul//li[string-length( text()) > 20]
-    t = tree.xpath("//article//p|//h2|//h3")
+    # //article//h1|//h2|//h3|//h4|//p|//ul//li
+    elements = htmlpage.xpath("//article//p|//h2|//h3")
 
     p_counter = 0
-    h2_counter = 0
-    for i in t:
-        if i.tag == "p" and i.text is not None:
+    h_counter = 0
+    for e in elements:
+        if e.tag == "p" and e.text is not None:
             # Remove paragraphs that are too short
-            if len(i.text.split(' ')) > MININUM_PARAGRAPH_LENGTH:
-                text.append(i.text)
+            if len(e.text.split(' ')) > MININUM_PARAGRAPH_LENGTH:
+                text.append(e.text)
                 p_counter += 1
-        elif i.tag == "h2" and i.text is not None:
-            text.append(i.text)
-            h2_counter += 1
-        elif i.tag == "h3" and i.text is not None:
-            text.append(i.text)
+        elif re.match(r'h\d', e.tag) and e.text is not None:
+            text.append(e.text)
+            h_counter += 1
 
-    if (p_counter < 2 and h2_counter < 1):
+    if (p_counter < 2 and h_counter < 1):
         logging.error("Not enough paragraphs or h2 tags in webpage")
         return None
     return text
 
 
-def get_title(tree: html.HtmlElement) -> str:
-    return tree.xpath("//article//h1")[0].text
+def get_title(htmlpage: html.HtmlElement) -> str:
+
+    if (htmlpage.xpath("//article//h1") == []):
+        logging.error("No title found in webpage")
+        return None
+
+    return htmlpage.xpath("//article//h1")[0].text
 
 
 def clean_url(url: str) -> str:
@@ -72,27 +76,30 @@ def clean_url(url: str) -> str:
     Returns:
         str: _description_
     """
-
+    url = urlparse.unquote(url)
     # Define the regex
-    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-]*)"
+    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-\@]*)"
 
     # Match the regex against the URL
     matches = re.findall(page_regex, url)
 
     # Get the first match
-    clean_url = matches[0]
-
-    # If no match, use the URL as the page URL
-    if not clean_url:
-        return url
+    if (matches):
+        clean_url = matches[0]
     else:
-        # Encode the URL and return it
-        return clean_url
+        # If no match, use the URL as the page URL
+        clean_url = url
+
+    return clean_url
 
 
 def create_page(url) -> Page:
     url = clean_url(url)
     html = get_webpage(url)
+    if (html is None):
+        logging.error("No webpage found")
+        return None
+
     paragraphs = get_paragraphs(html)
 
     if (paragraphs is None):
