@@ -40,10 +40,6 @@ class Document(SQLModel, table=True):
     bookmark_id: int = Field(default=None, nullable=True)
 
 
-class ConsolidatedResponse(SQLModel, table=False):
-    keyphrases: Optional[List['Keyphrase']] = Field(default=None)
-    document: Optional[Bookmark] = Field(default=None)
-
 
 class Keyphrase(SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
