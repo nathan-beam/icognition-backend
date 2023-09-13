@@ -3,13 +3,14 @@ import logging
 import re
 from lxml import html
 from app.models import Page
-from bs4 import BeautifulSoup
 import urllib.parse as urlparse
 
 
-logging.basicConfig(format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-                    datefmt='%Y-%m-%d:%H:%M:%S',
-                    level=logging.DEBUG)
+logging.basicConfig(
+    format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
+    datefmt="%Y-%m-%d:%H:%M:%S",
+    level=logging.DEBUG,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,22 +46,21 @@ def get_paragraphs(htmlpage: html.HtmlElement) -> list[str]:
     for e in elements:
         if e.tag == "p" and e.text is not None:
             # Remove paragraphs that are too short
-            if len(e.text.split(' ')) > MININUM_PARAGRAPH_LENGTH:
+            if len(e.text.split(" ")) > MININUM_PARAGRAPH_LENGTH:
                 text.append(e.text)
                 p_counter += 1
-        elif re.match(r'h\d', e.tag) and e.text is not None:
+        elif re.match(r"h\d", e.tag) and e.text is not None:
             text.append(e.text)
             h_counter += 1
 
-    if (p_counter < 2 and h_counter < 1):
+    if p_counter < 2 and h_counter < 1:
         logging.error("Not enough paragraphs or h2 tags in webpage")
         return None
     return text
 
 
 def get_title(htmlpage: html.HtmlElement) -> str:
-
-    if (htmlpage.xpath("//article//h1") == []):
+    if htmlpage.xpath("//article//h1") == []:
         logging.error("No title found in webpage")
         return None
 
@@ -84,7 +84,7 @@ def clean_url(url: str) -> str:
     matches = re.findall(page_regex, url)
 
     # Get the first match
-    if (matches):
+    if matches:
         clean_url = matches[0]
     else:
         # If no match, use the URL as the page URL
@@ -96,13 +96,13 @@ def clean_url(url: str) -> str:
 def create_page(url) -> Page:
     url = clean_url(url)
     html = get_webpage(url)
-    if (html is None):
+    if html is None:
         logging.error("No webpage found")
         return None
 
     paragraphs = get_paragraphs(html)
 
-    if (paragraphs is None):
+    if paragraphs is None:
         logging.error("No paragraphs found in webpage")
         return None
 
