@@ -1,16 +1,12 @@
 import datetime
 import sys
 import logging
-import torch
 from app import html_parser
 from app.models import Bookmark, Keyphrase, WD_ItemVector, Page, Document
-from app.local_model import LocalModel
 from app.api_model import APIModel, LlamaTemplates
 from app.keyphrase_extractor import KeyphraseExtraction
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
-from sentence_transformers import SentenceTransformer, util
 from dotenv import dotenv_values
 
 
@@ -24,35 +20,6 @@ engine = create_engine(config['LOCAL_PSQL'])
 
 api_model = APIModel()
 
-stantance_model_name = "paraphrase-MiniLM-L6-v2"
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
-sentence_transformer = SentenceTransformer(stantance_model_name, device=device)
-
-
-def find_wikidata_id(kp: Keyphrase, session: Session):
-    vec_query = sentence_transformer.encode(
-        kp.context, show_progress_bar=False)
-    items = session.query(WD_ItemVector).order_by(
-        WD_ItemVector.text_vec.cosine_distance(vec_query)).limit(2).all()
-
-    for item in items:
-        distance = util.cos_sim(item.text_vec, vec_query)
-        print('------- Context ------')
-        print(f"word: {kp.word}. context: {kp.context}")
-        print(item.text)
-        print(distance)
-
-    vec_query = sentence_transformer.encode(
-        kp.word, show_progress_bar=False)
-    items = session.query(WD_ItemVector).order_by(
-        WD_ItemVector.text_vec.cosine_distance(vec_query)).limit(2).all()
-
-    for item in items:
-        distance = util.cos_sim(item.text_vec, vec_query)
-        print('------ Word -------')
-        print(f"word: {kp.word}")
-        print(item.text)
-        print(distance)
 
 
 def delete_bookmark_and_associate_records(bookmark_id) -> None:
