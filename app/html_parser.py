@@ -2,6 +2,7 @@ import requests
 import logging
 import re
 from lxml import html
+from bs4 import BeautifulSoup
 from app.models import Page
 import urllib.parse as urlparse
 
@@ -17,54 +18,66 @@ logger = logging.getLogger(__name__)
 MININUM_PARAGRAPH_LENGTH = 10
 
 
-def get_webpage(url) -> html.HtmlElement:
+def get_webpage(url: str) -> BeautifulSoup:
     """_summary_
 
     Args:
-        url (_type_): _description_
+        url (str): URL of the page
 
     Returns:
-        html.HtmlElement: _description_
+        BeautifulSoup: BeatifulSoup object
     """
     try:
         response = requests.get(url)
         content = response.text
-        htmlpage = html.fromstring(content)
-        return htmlpage
+        soup = BeautifulSoup(content, "lxml")
+        return soup
     except Exception as e:
         logging.error(f"Error getting webpage: {url} with error: {e}")
         return None
 
 
-def get_paragraphs(htmlpage: html.HtmlElement) -> list[str]:
-    text = []
-    # //article//h1|//h2|//h3|//h4|//p|//ul//li
-    elements = htmlpage.xpath("//article//p|//h2|//h3")
+def get_paragraphs(soup: BeautifulSoup) -> list[str]:
+    articles = soup.find_all("article")
 
-    p_counter = 0
-    h_counter = 0
-    for e in elements:
-        if e.tag == "p" and e.text is not None:
-            # Remove paragraphs that are too short
-            if len(e.text.split(" ")) > MININUM_PARAGRAPH_LENGTH:
-                text.append(e.text)
-                p_counter += 1
-        elif re.match(r"h\d", e.tag) and e.text is not None:
-            text.append(e.text)
-            h_counter += 1
+    content_estimator = []
+    for article in articles:
+        num_contect_ele = len(article.find_all("h1")) + len(article.find_all("p"))
+        content_estimator.append(num_contect_ele)
 
-    if p_counter < 2 and h_counter < 1:
-        logging.error("Not enough paragraphs or h2 tags in webpage")
-        return None
-    return text
+    logging.info(content_estimator)
+    if max(content_estimator) < 3:
+        logging.warning("Not enought content on the page")
+        raise ValueError("Not enough contect on the page")
+
+    # Select the article element with the most content
+    main_article = articles[content_estimator.index(max(content_estimator))]
+
+    header_pattern = re.compile(r"h\d")
+    text_elements = []
+    for element in main_article.find_all(["p", "h1", "h2", "h3"]):
+        ## Collect only paragraph and headers with enough content
+        if element.name == "p" and len(element.text.split(" ")) > 8:
+            text_elements.append(element.text)
+        elif header_pattern.match(element.name) and len(element.text.split(" ")) > 3:
+            text_elements.append(element.text)
+        else:
+            None
+    return text_elements
 
 
-def get_title(htmlpage: html.HtmlElement) -> str:
-    if htmlpage.xpath("//article//h1") == []:
+def get_title(soup: BeautifulSoup) -> str:
+    h1 = soup.find("h1")
+    if h1 is None:
         logging.error("No title found in webpage")
         return None
 
-    return htmlpage.xpath("//article//h1")[0].text
+    return h1.text
+
+
+def extract_author_medium(soup: BeautifulSoup) -> str:
+    author = soup.find(attrs={"data-testid": "authorName"}).text
+    return author
 
 
 def clean_url(url: str) -> str:
@@ -107,10 +120,12 @@ def create_page(url) -> Page:
         return None
 
     title = get_title(html)
+    author = extract_author_medium(html)
 
     page = Page()
     page.clean_url = url
     page.paragraphs = paragraphs
+    page.author = author
     page.full_text = "\n".join(paragraphs)
     page.title = title
 
@@ -122,8 +137,9 @@ if __name__ == "__main__":
     tree = get_webpage(url)
     paragraphs = get_paragraphs(tree)
     title = get_title(tree)
-    print("Title")
-    print(title)
+    author = extract_author_medium(tree)
+    print(f"Title: {title}")
+    print(f"Author: {author}")
     for paragraph in paragraphs:
         print("-----------------")
         print(paragraph)
