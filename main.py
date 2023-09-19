@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +23,7 @@ app = FastAPI()
 origins = [
     "chrome-extension://dpcnaflfhdkdeijjglelioklbghepbig",
     "chrome-extension://*",
-    "*",
+    "*://localhost:*",
 ]
 
 app.add_middleware(
@@ -49,7 +49,7 @@ async def validation_exception_handler(request, exc):
 
 
 @app.post("/bookmark", response_model=Bookmark, status_code=201)
-async def create_bookmark(url: URL, response_model=Bookmark, status_code=201):
+async def create_bookmark(url: URL, background_tasks: BackgroundTasks):
     """file_name = f'../data/icog_pages/{page.clean_url}.json'
     with open(file_name, "w") as fp:
         json.dump(page.dict(), fp)
@@ -68,7 +68,16 @@ async def create_bookmark(url: URL, response_model=Bookmark, status_code=201):
     logging.info(f"Page object created for {page.clean_url}")
     bookmark = app_logic.generate_bookmark(page)
     logging.info(f"Bookmark created for {bookmark.url}")
+    background_tasks.add_task(generate_document, page, bookmark.id)
     return bookmark
+
+
+## Background task to generate summaries from LLM
+async def generate_document(page, bookmark_id):
+    logging.info(
+        f"Background task for generating document for bookmark ID {bookmark_id}"
+    )
+    app_logic.generate_document(page, bookmark_id)
 
 
 @app.get("/bookmark", response_model=Bookmark, status_code=200)

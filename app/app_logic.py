@@ -114,11 +114,11 @@ def generate_document(page: Page, bookmark_id: int):
     bp_query = templates.bullet_points(page.full_text)
     en_query = templates.people_org_places(page.full_text)
 
-    # found_entities_raw = api_model.generate(en_query)
-    # summary_generated = api_model.generate(sum_query)
+    found_entities_raw = api_model.generate(en_query)
+    summary_generated = api_model.generate(sum_query)
     summary_bullet_points = api_model.generate(bp_query)
 
-    """ if found_entities_raw:
+    if found_entities_raw:
         doc.found_entities_raw = found_entities_raw
     else:
         logging.info(f"No entities found for url {page.clean_url}")
@@ -127,7 +127,6 @@ def generate_document(page: Page, bookmark_id: int):
         doc.summary_generated = summary_generated
     else:
         logging.info(f"No summary generated for url {page.clean_url}")
- """
     if summary_bullet_points:
         doc.summary_bullet_points = summary_bullet_points
     else:
@@ -167,8 +166,6 @@ def generate_bookmark(page: Page) -> Bookmark:
     session.commit()
 
     logging.info(f"Bookmark was created with id {bookmark.id}")
-
-    generate_document(page, bookmark.id)
 
     session.close()
 

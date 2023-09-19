@@ -47,7 +47,9 @@ class LlamaTemplates:
                 {BODY}
                 SUMMARY:""",
             "bullet-points": """
-                Write a very concise summary of the following text delimited by triple backquotes. Write the summary in bullet points which covers the key points of the text.
+                Write a very concise summary of the following text delimited by triple backquotes.
+                Write the summary in bullet points which covers the key points of the text. 
+                Number of bullet points should be propotional of the length of the input text. The maximum number of points is eight.
                 {BODY}
                 BULLET POINTS SUMMARY:""",
             "people-org-places": """
@@ -117,11 +119,11 @@ class APIModel:
         # If error true, sleep for 30 seconds and
         # try again.
         # If error still true, return error message.
-        if response.status_code == 503 and (
+        if (response.status_code == 503 or response.status_code == 429) and (
             self._retry_attempts < self._retry_max_attempts
         ):
             logging.info(
-                f"API Call Error: {results['error']}. Retrying in {self._retry_sleep} seconds"
+                f"API Call Error: {response.content}. Retrying in {self._retry_sleep} seconds"
             )
             self._retry_attempts += 1
             sleep(self._retry_sleep)
@@ -134,12 +136,6 @@ class APIModel:
             self._retry_attempts = 0
             logging.warn(f"Retry limit reached. Returning error")
             raise ResourceWarning("Retry limit reached. Returning an error")
-        elif response.status_code == 429:
-            try:
-                logging.error(f"HTTP Error 429, message: {response.content}")
-            except json.JSONDecodeError:
-                logging.error(f"API Call Error: {response.text}")
-            raise ResourceWarning("API Call Error: Rate limit reached.")
 
         elif response.status_code == 200:
             try:
