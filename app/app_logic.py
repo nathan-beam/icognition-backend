@@ -4,41 +4,41 @@ import logging
 from app import html_parser
 from app.models import Bookmark, Keyphrase, WD_ItemVector, Page, Document
 from app.api_model import APIModel, LlamaTemplates
-from app.keyphrase_extractor import KeyphraseExtraction
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
 
 
-logging.basicConfig(stream=sys.stdout, format='%(asctime)s - %(message)s',
-                    level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(
+    stream=sys.stdout,
+    format="%(asctime)s - %(message)s",
+    level=logging.DEBUG,
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 config = dotenv_values(".env")
 
-engine = create_engine(config['LOCAL_PSQL'])
+engine = create_engine(config["LOCAL_PSQL"])
 
 
 api_model = APIModel()
 
 
-
 def delete_bookmark_and_associate_records(bookmark_id) -> None:
     """
-    This function deletes a bookmark and all associated records from the database. 
-    This function was create for testing purposes. 
+    This function deletes a bookmark and all associated records from the database.
+    This function was create for testing purposes.
     """
     logging.info(f"Deleting bookmark {bookmark_id} and associated records")
     with Session(engine) as session:
-        session.execute(delete(Document).where(
-            Document.bookmark_id == bookmark_id))
-        session.execute(delete(Bookmark).where(
-            Bookmark.id == bookmark_id))
+        session.execute(delete(Document).where(Document.bookmark_id == bookmark_id))
+        session.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
         session.commit()
         logging.info(f"Bookmark {bookmark_id} and associated records deleted")
 
 
 def delete_all_of_users_records(user_id: int) -> None:
-    """ Delete all of the records for a user. This function was create for testing
+    """Delete all of the records for a user. This function was create for testing
 
     Args:
         user_id int
@@ -50,41 +50,41 @@ def delete_all_of_users_records(user_id: int) -> None:
 
 def get_document_by_bookmark_id(bookmark_id) -> Document:
     session = Session(engine)
-    doc = session.scalar(select(Document).where(
-        Document.bookmark_id == bookmark_id))
+    doc = session.scalar(select(Document).where(Document.bookmark_id == bookmark_id))
     session.close()
     return doc
 
 
 def get_document_by_id(document_id) -> Document:
     session = Session(engine)
-    doc = session.scalar(select(Document).where(
-        Document.id == document_id))
+    doc = session.scalar(select(Document).where(Document.id == document_id))
     session.close()
     return doc
 
 
 def get_document_by_url(url) -> Bookmark:
     session = Session(engine)
-    doc = session.scalar(select(Bookmark).where(
-        Bookmark.url == url))
+    doc = session.scalar(select(Bookmark).where(Bookmark.url == url))
     session.close()
     return doc
 
 
 def get_keyphrases_by_document_id(document_id) -> Keyphrase:
     session = Session(engine)
-    keyphrases = session.scalars(select(Keyphrase).where(
-        Keyphrase.document_id == document_id)).all()
+    keyphrases = session.scalars(
+        select(Keyphrase).where(Keyphrase.document_id == document_id)
+    ).all()
     session.close()
     return keyphrases
 
 
 def get_keyphrases_by_document_url(url) -> list[Keyphrase]:
     session = Session(engine)
-    stmt = select(Keyphrase).join(
-        Bookmark, Keyphrase.document_id == Bookmark.id).where(
-            Bookmark.url == url)
+    stmt = (
+        select(Keyphrase)
+        .join(Bookmark, Keyphrase.document_id == Bookmark.id)
+        .where(Bookmark.url == url)
+    )
     keyphrases = session.scalars(stmt).all()
     session.close()
     return keyphrases
@@ -100,8 +100,8 @@ def create_page(url: str) -> Page:
 
 
 def generate_document(page: Page, bookmark_id: int):
-    """ 
-    Function that takes pages and return a document with the generated summary, 
+    """
+    Function that takes pages and return a document with the generated summary,
     bullet points and entities generate by LLM
     """
     templates = LlamaTemplates()
@@ -127,7 +127,6 @@ def generate_document(page: Page, bookmark_id: int):
         doc.summary_generated = summary_generated
     else:
         logging.info(f"No summary generated for url {page.clean_url}")
-
     if summary_bullet_points:
         doc.summary_bullet_points = summary_bullet_points
     else:
@@ -140,33 +139,18 @@ def generate_document(page: Page, bookmark_id: int):
         session.commit()
 
 
-def generate_keyphrases(doc: Document) -> None:
-
-    keyphrase_extractor = KeyphraseExtraction()
-
-    full_text = '\n'.join(doc.page.paragraphs)
-    keyphrases = [Keyphrase(**kp)
-                  for kp in keyphrase_extractor(full_text)]
-
-    with Session(engine) as session:
-        for k in keyphrases:
-            k.document_id = doc.id
-        session.add(keyphrases)
-        session.commit()
-
-
 def generate_bookmark(page: Page) -> Bookmark:
-
     session = Session(engine)
 
     # Check if document exists, retrieve the bookmark and keyphrases and return
     # if exists. Else, create the document, bookmark and keyphrase.
-    user_id = config['DUMMY_USER']
+    user_id = config["DUMMY_USER"]
 
-    bookmark = session.scalar(select(Bookmark).where(
-        and_(
-            Bookmark.url == page.clean_url,
-            Bookmark.user_id == user_id)))
+    bookmark = session.scalar(
+        select(Bookmark).where(
+            and_(Bookmark.url == page.clean_url, Bookmark.user_id == user_id)
+        )
+    )
 
     if bookmark:
         logging.info(f"Bookmark from url {page.clean_url} already exists")
@@ -181,10 +165,7 @@ def generate_bookmark(page: Page) -> Bookmark:
     # session.add(doc)
     session.commit()
 
-    logging.info(
-        f'Bookmark was created with id {bookmark.id}')
-
-    generate_document(page, bookmark.id)
+    logging.info(f"Bookmark was created with id {bookmark.id}")
 
     session.close()
 
@@ -193,8 +174,9 @@ def generate_bookmark(page: Page) -> Bookmark:
 
 def get_bookmark_by_user_id(user_id: int) -> list[Bookmark]:
     session = Session(engine)
-    bookmarks = session.scalars(select(Bookmark).where(
-        Bookmark.user_id == user_id)).all()
+    bookmarks = session.scalars(
+        select(Bookmark).where(Bookmark.user_id == user_id)
+    ).all()
     session.close()
     return bookmarks
 
@@ -202,23 +184,20 @@ def get_bookmark_by_user_id(user_id: int) -> list[Bookmark]:
 def get_bookmark_by_url(url: str) -> Bookmark:
     url = html_parser.clean_url(url)
     session = Session(engine)
-    bookmark = session.scalar(select(Bookmark).where(
-        Bookmark.url == url))
+    bookmark = session.scalar(select(Bookmark).where(Bookmark.url == url))
     session.close()
     return bookmark
 
 
 def get_bookmark_document(id: int) -> Document:
     session = Session(engine)
-    doc = session.scalar(select(Document).where(
-        Document.bookmark_id == id))
+    doc = session.scalar(select(Document).where(Document.bookmark_id == id))
     session.close()
     return doc
 
 
 def get_bookmark_by_id(id: int) -> Bookmark:
     session = Session(engine)
-    bookmark = session.scalar(select(Bookmark).where(
-        Bookmark.id == id))
+    bookmark = session.scalar(select(Bookmark).where(Bookmark.id == id))
     session.close()
     return bookmark

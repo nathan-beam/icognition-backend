@@ -10,9 +10,14 @@ class URL(SQLModel, table=False):
     url: Optional[str] = Field(default=None)
 
 
+class HTTPError(SQLModel, table=False):
+    detail: Optional[str] = Field(default=None)
+
+
 class Page(SQLModel, table=False):
     clean_url: Optional[str] = Field(default=None)
     title: Optional[str] = Field(default=None)
+    author: Optional[str] = Field(default=None)
     paragraphs: Optional[List[str]] = Field(default=None)
     full_text: Optional[str] = Field(default=None)
 
@@ -20,8 +25,7 @@ class Page(SQLModel, table=False):
 class Bookmark(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     url: str = Field(nullable=False)
-    update_at: datetime = Field(
-        default_factory=datetime.utcnow, nullable=False)
+    update_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     document_id: Optional[int] = Field(default=None, nullable=True)
     user_id: Optional[int] = Field(default=777, nullable=True)
 
@@ -35,10 +39,8 @@ class Document(SQLModel, table=True):
     summary_bullet_points: str = Field(default=None)
     found_entities_raw: str = Field(default=None)
     publication_date: datetime = Field(default=None)
-    update_at: datetime = Field(
-        default_factory=datetime.utcnow, nullable=True)
+    update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
     bookmark_id: int = Field(default=None, nullable=True)
-
 
 
 class Keyphrase(SQLModel, table=True):
@@ -51,8 +53,7 @@ class Keyphrase(SQLModel, table=True):
     type: Optional[str] = Field(default=None)
     entity_group: Optional[str] = Field(default=None)
     context: Optional[str] = Field(default=None)
-    context_vec: List[float] = Field(
-        sa_column=Column(Vector(384)), default=None)
+    context_vec: List[float] = Field(sa_column=Column(Vector(384)), default=None)
     document_id: Optional[int] = Field(default=None)
 
 
@@ -76,5 +77,4 @@ class WD_ItemVector(SQLModel, table=True):
     text: Optional[str] = Field(default=None)
     wikidata_id: Optional[int] = Field(default=None)
     text_vec: List[float] = Field(sa_column=Column(Vector(384)))
-    update_at: datetime = Field(
-        default_factory=datetime.utcnow, nullable=False)
+    update_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
