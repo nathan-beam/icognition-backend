@@ -1,7 +1,6 @@
 import requests
 import logging
 import re
-from lxml import html
 from bs4 import BeautifulSoup
 from app.models import Page
 import urllib.parse as urlparse
@@ -40,10 +39,16 @@ def get_webpage(url: str) -> BeautifulSoup:
 def get_paragraphs(soup: BeautifulSoup) -> list[str]:
     articles = soup.find_all("article")
 
+    if articles == None:
+        return None
+
     content_estimator = []
     for article in articles:
         num_contect_ele = len(article.find_all("h1")) + len(article.find_all("p"))
         content_estimator.append(num_contect_ele)
+
+    if len(content_estimator) == 0:
+        return None
 
     logging.info(content_estimator)
     if max(content_estimator) < 3:

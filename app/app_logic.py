@@ -3,7 +3,8 @@ import sys
 import logging
 from app import html_parser
 from app.models import Bookmark, Keyphrase, WD_ItemVector, Page, Document
-from app.hf_api_caller import APIModel, LlamaTemplates
+from app.hf_api_caller import HfAPICaller, LlamaTemplates
+from app.spacy_ner_caller import NerCaller
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
@@ -21,7 +22,8 @@ config = dotenv_values(".env")
 engine = create_engine(config["LOCAL_PSQL"])
 
 
-api_model = APIModel()
+hf_caller = HfAPICaller()
+ner_caller = NerCaller()
 
 
 def delete_bookmark_and_associate_records(bookmark_id) -> None:
@@ -110,27 +112,34 @@ def generate_document(page: Page, bookmark_id: int):
     doc.url = page.clean_url
     doc.bookmark_id = bookmark_id
 
-    sum_query = templates.summarize(page.full_text)
+    concepts_query = templates.concepts(page.full_text)
     bp_query = templates.bullet_points(page.full_text)
     en_query = templates.people_org_places(page.full_text)
 
-    found_entities_raw = api_model.generate(en_query)
-    summary_generated = api_model.generate(sum_query)
-    summary_bullet_points = api_model.generate(bp_query)
+    found_entities_raw = hf_caller.generate(en_query)
+    concepts = hf_caller.generate(concepts_query)
+    summary_bullet_points = hf_caller.generate(bp_query)
+
+    ner_entities = ner_caller(page.full_text)
 
     if found_entities_raw:
-        doc.found_entities_raw = found_entities_raw
+        doc.llama2_entities_raw = found_entities_raw
     else:
         logging.info(f"No entities found for url {page.clean_url}")
 
-    if summary_generated:
-        doc.summary_generated = summary_generated
+    if concepts:
+        doc.concepts_generated = concepts
     else:
         logging.info(f"No summary generated for url {page.clean_url}")
     if summary_bullet_points:
         doc.summary_bullet_points = summary_bullet_points
     else:
         logging.info(f"No bullet points generated for url {page.clean_url}  ")
+
+    if ner_entities:
+        doc.spacy_entities_json = ner_entities
+    else:
+        logging.info(f"No NER entities were found")
 
     doc.update_at = datetime.datetime.now()
 
