@@ -47,15 +47,24 @@ class LlamaTemplates:
                 {BODY}
                 SUMMARY:""",
             "bullet-points": """
-                Write a very concise summary of the following text delimited by triple backquotes.
-                Write the summary in bullet points which covers the key points of the text. 
-                Number of bullet points should be propotional of the length of the input text. The maximum number of points is eight.
-                {BODY}
-                BULLET POINTS SUMMARY:""",
+                <s>[INST] <<SYS>>
+                You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  
+                Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. 
+                Please ensure that your responses are socially unbiased and positive in nature.
+                If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. 
+                If you don't know the answer to a question, please don't share false information.
+                <</SYS>>
+                Write up to six points that summarize the following text: {BODY} [/INST]""",
             "people-org-places": """
-                Extract people, organizations and places from the following text and output them by entity type
-                {BODY}
-                EXTRACTED NAMES, ORGANIZATIONS AND PLACES:""",
+                <s>[INST] <<SYS>>
+                You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  
+                Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. 
+                Please ensure that your responses are socially unbiased and positive in nature.
+                If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. 
+                If you don't know the answer to a question, please don't share false information.
+                <</SYS>>
+                Find people, companies, and places in the text between the double quotes. 
+                Format each item wrap with XML element tags, for example <people>[PERSON]</poeple> for people, don't create tag in data is not correct. ""{BODY}"" [/INST]""",
             "empty": """{INSTRUCTIONS}
                          {BODY}
                          {RESULTS}""",
@@ -97,7 +106,7 @@ class APIModel:
             "return_full_text": False,
             "do_sample": True,
             "num_return_sequences": 1,
-            "temperature": 0.7,
+            "temperature": 0.5,
             "repetition_penalty": 1.0,
             "length_penalty": 1.0,
         }
@@ -112,7 +121,10 @@ class APIModel:
 
     def api_call(self, payload: dict) -> dict:
         API_URL = self._api_url
-        headers = {"Authorization": f"Bearer {self._api_token}"}
+        headers = {
+            "Authorization": f"Bearer {self._api_token}",
+            "content-type": "application/json",
+        }
 
         response = requests.post(API_URL, headers=headers, json=payload)
 

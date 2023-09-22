@@ -3,7 +3,7 @@ import sys
 import logging
 from app import html_parser
 from app.models import Bookmark, Keyphrase, WD_ItemVector, Page, Document
-from app.api_model import APIModel, LlamaTemplates
+from app.hf_api_caller import APIModel, LlamaTemplates
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
