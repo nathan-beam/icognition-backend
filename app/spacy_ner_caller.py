@@ -40,8 +40,11 @@ class NerCaller:
                 logging.info(
                     f"NER API Call successful. Status code {response.status_code}. Identify: {len(results)} entities"
                 )
-                self._retry_attempts = 0
-                return results
+                if len(results) > 0:
+                    return results
+                else:
+                    return None
+
             except json.JSONDecodeError:
                 logging.error(f"Error decoding JSON response: {response}")
                 return None

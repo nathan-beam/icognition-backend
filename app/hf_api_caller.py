@@ -39,6 +39,9 @@ class LlamaTemplates:
             self.templates["people-org-places"].format(BODY=body_text)
         )
 
+    def concepts(self, body_text: str) -> str:
+        return self.clean_text(self.templates["concepts"].format(BODY=body_text))
+
     @property
     def templates(self) -> dict:
         return {
@@ -68,10 +71,20 @@ class LlamaTemplates:
             "empty": """{INSTRUCTIONS}
                          {BODY}
                          {RESULTS}""",
+            "concepts": """<s>[INST] <<SYS>>
+                You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  
+                Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. 
+                Please ensure that your responses are socially unbiased and positive in nature.
+                If a question does not make any sense, or is not factually coherent, 
+                explain why instead of answering something not correct. 
+                If you don't know the answer to a question, please don't share false information.
+                <</SYS>>
+                Identify the up to 5 key concepts mentioned in the text between the double quotes. Format the output as  <c>[CONCEPT]</c><e>[EXPLANATION]</e> ""{BODY}"" [/INST]
+                """,
         }
 
 
-class APIModel:
+class HfAPICaller:
     """
     APIModel class is used to generate summaries by calling the HuggingFace API.
 
@@ -200,7 +213,7 @@ class APIModel:
 
 
 if __name__ == "__main__":
-    model = APIModel()
+    model = HfAPICaller()
     logging.info("Generating summary")
     query = model._templates.summarize(
         """The US has passed the peak on new coronavirus cases, \
