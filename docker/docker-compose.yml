@@ -22,3 +22,9 @@ services:
       PGADMIN_DEFAULT_PASSWORD: root
     ports:
       - "5050:80"
+  ner_service:
+    container_name: ner_service_container
+    image: spacy-service
+    restart: always
+    ports:
+      - "8999:8999"

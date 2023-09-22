@@ -1,8 +1,8 @@
 from pgvector.sqlalchemy import Vector
-from sqlmodel import SQLModel, Field, ARRAY, Float, Integer, String
+from sqlmodel import SQLModel, Field, ARRAY, Float, JSON
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import TEXT
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
@@ -36,8 +36,10 @@ class Document(SQLModel, table=True):
     url: str = Field(default=None)
     authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=None)
     summary_generated: str = Field(default=None)
+    concepts_generated: str = Field(default=None)
     summary_bullet_points: str = Field(default=None)
-    found_entities_raw: str = Field(default=None)
+    llama2_entities_raw: str = Field(default=None)
+    spacy_entities_json: List = Field(default=[], sa_column=Column(JSON))
     publication_date: datetime = Field(default=None)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
     bookmark_id: int = Field(default=None, nullable=True)

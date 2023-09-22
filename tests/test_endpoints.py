@@ -1,6 +1,7 @@
 import json
 import requests
 import urllib.parse as urlparse
+from typing import List
 
 """ Generate unit test for endpoints.py FastAPI functions """
 
@@ -48,11 +49,11 @@ def test_bookmark_end_to_end_workflow():
 
     # assert type(doc["summary_generated"]) == str
     assert type(doc["summary_bullet_points"]) == str
-    # assert type(doc["found_entities_raw"]) == str
+    assert type(doc["spacy_entities_json"]) == list
 
     # assert len(doc["summary_generated"]) > 10
     assert len(doc["summary_bullet_points"]) > 10
-    # assert len(doc["found_entities_raw"]) > 10
+    assert len(doc["spacy_entities_json"]) > 0
 
     response = requests.delete(f"{base_url}/bookmark/{bookmark_id}/document")
     status_code = response.status_code
