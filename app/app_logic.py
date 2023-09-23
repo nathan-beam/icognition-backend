@@ -106,11 +106,16 @@ def generate_document(page: Page, bookmark_id: int):
     Function that takes pages and return a document with the generated summary,
     bullet points and entities generate by LLM
     """
+
+    session = Session(engine)
     templates = LlamaTemplates()
     doc = Document()
     doc.title = page.title
     doc.url = page.clean_url
     doc.bookmark_id = bookmark_id
+    doc.status = "Processing"
+    session.add(doc)
+    session.commit()
 
     concepts_query = templates.concepts(page.full_text)
     bp_query = templates.bullet_points(page.full_text)
@@ -142,10 +147,10 @@ def generate_document(page: Page, bookmark_id: int):
         logging.info(f"No NER entities were found")
 
     doc.update_at = datetime.datetime.now()
+    doc.status = "Done"
 
-    with Session(engine) as session:
-        session.add(doc)
-        session.commit()
+    session.commit()
+    session.close()
 
 
 def generate_bookmark(page: Page) -> Bookmark:

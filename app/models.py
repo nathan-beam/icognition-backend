@@ -43,6 +43,7 @@ class Document(SQLModel, table=True):
     publication_date: datetime = Field(default=None)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
     bookmark_id: int = Field(default=None, nullable=True)
+    status: str = Field(default="Pending", nullable=True)
 
 
 class Keyphrase(SQLModel, table=True):
