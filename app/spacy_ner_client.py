@@ -15,7 +15,7 @@ logging.basicConfig(
 config = dotenv_values(".env")
 
 
-class NerCaller:
+class NerClient:
     """
     NerCaller is a class that wrap NER service. The class call the service with text and return list of identified
 
@@ -53,7 +53,7 @@ class NerCaller:
 
 
 if __name__ == "__main__":
-    caller = NerCaller()
+    caller = NerClient()
     entities = caller(
         "Roger bought an Apple computer on Amazon for $500. Jeff is driving Toyota 2020"
     )

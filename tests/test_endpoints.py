@@ -8,7 +8,8 @@ from typing import List
 
 base_url = "http://localhost:8889"
 
-url = "https://bergum.medium.com/four-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5#tour"
+# url = "https://bergum.medium.com/four-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5#tour"
+url = "https://medium.com/@yu-joshua/future-of-knowledge-graph-will-structured-and-semantic-search-come-into-one-952d33951df3"
 payload = {"url": url}
 
 # Unit test for create bookmart
