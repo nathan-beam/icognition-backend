@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -91,15 +91,21 @@ async def get_bookmark(url: str):
     return bookmark
 
 
-@app.get("/bookmark/{id}/document", response_model=Document, status_code=200)
-async def get_bookmark_document(id: int):
+@app.get("/bookmark/{id}/document", response_model=Document)
+async def get_bookmark_document(id: int, response: Response):
     logging.info(f"Icognition bookmark document endpoint called on {id}")
     document = app_logic.get_document_by_bookmark_id(id)
 
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    return document
+    # If document is still in processing, let the client know
+    if document.status == "Processing":
+        response.status_code = status.HTTP_206_PARTIAL_CONTENT
+        return document
+    if document.status == "Done":
+        response.status_code = status.HTTP_200_OK
+        return document
 
 
 @app.get("/document/{id}", response_model=Document, status_code=200)

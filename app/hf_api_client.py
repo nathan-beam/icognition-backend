@@ -1,3 +1,4 @@
+from typing import Any
 import requests
 import os
 import logging
@@ -22,34 +23,27 @@ config = dotenv_values(".env")
 
 class LlamaTemplates:
     def __init__(self) -> None:
+        self.template = ""
+        pass
+
+    def getTemplate(self) -> str:
+        return self.template
+
+    def __name__(self) -> str:
+        return self.__class__.__name__
+
+    def __call__(self, text):
         pass
 
     # Replace long space bigger then 2 with single space
     def clean_text(self, text: str) -> str:
         return re.sub(r"\s{2,}", " ", text)
 
-    def summarize(self, body_text: str) -> str:
-        return self.clean_text(self.templates["summarize"].format(BODY=body_text))
 
-    def bullet_points(self, body_text: str) -> str:
-        return self.clean_text(self.templates["bullet-points"].format(BODY=body_text))
-
-    def people_org_places(self, body_text: str) -> str:
-        return self.clean_text(
-            self.templates["people-org-places"].format(BODY=body_text)
-        )
-
-    def concepts(self, body_text: str) -> str:
-        return self.clean_text(self.templates["concepts"].format(BODY=body_text))
-
-    @property
-    def templates(self) -> dict:
-        return {
-            "summarize": """
-                Write a summary of the following text delimited by triple backquotes.
-                {BODY}
-                SUMMARY:""",
-            "bullet-points": """
+class BulletPointTemplate(LlamaTemplates):
+    def __init__(self):
+        super(BulletPointTemplate, self).__init__()
+        self.template = """
                 <s>[INST] <<SYS>>
                 You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  
                 Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. 
@@ -57,9 +51,16 @@ class LlamaTemplates:
                 If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. 
                 If you don't know the answer to a question, please don't share false information.
                 <</SYS>>
-                Write up to six points that summarize the following text: {BODY} [/INST]""",
-            "people-org-places": """
-                <s>[INST] <<SYS>>
+                Write up to six points that summarize the text between double quotes: ""{BODY}"" [/INST]"""
+
+    def __call__(self, text) -> str:
+        return self.clean_text(self.template.format(BODY=text))
+
+
+class PeopleCompaniesPlacesTemplate(LlamaTemplates):
+    def __init__(self):
+        super(PeopleCompaniesPlacesTemplate, self).__init__()
+        self.template = """<s>[INST] <<SYS>>
                 You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  
                 Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. 
                 Please ensure that your responses are socially unbiased and positive in nature.
@@ -67,11 +68,16 @@ class LlamaTemplates:
                 If you don't know the answer to a question, please don't share false information.
                 <</SYS>>
                 Find people, companies, and places in the text between the double quotes. 
-                Format each item wrap with XML element tags, for example <people>[PERSON]</poeple> for people, don't create tag in data is not correct. ""{BODY}"" [/INST]""",
-            "empty": """{INSTRUCTIONS}
-                         {BODY}
-                         {RESULTS}""",
-            "concepts": """<s>[INST] <<SYS>>
+                Format each item wrap with XML element tags, for example <people>[PERSON]</poeple> for people, don't create tag in data is not correct. ""{BODY}"" [/INST]"""
+
+    def __call__(self, text) -> str:
+        return self.clean_text(self.template.format(BODY=text))
+
+
+class ConceptsTemplate(LlamaTemplates):
+    def __init__(self):
+        super(ConceptsTemplate, self).__init__()
+        self.template = """<s>[INST] <<SYS>>
                 You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  
                 Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. 
                 Please ensure that your responses are socially unbiased and positive in nature.
@@ -79,12 +85,14 @@ class LlamaTemplates:
                 explain why instead of answering something not correct. 
                 If you don't know the answer to a question, please don't share false information.
                 <</SYS>>
-                Identify the up to 5 key concepts mentioned in the text between the double quotes. Format the output as  <c>[CONCEPT]</c><e>[EXPLANATION]</e> ""{BODY}"" [/INST]
-                """,
-        }
+                Identify the top five to 8 important concepts mentioned in the text between the double quotes. Write you results in this format <c>[Concept Name]</c><e>[Explain the concept]</e> ""{BODY}"" [/INST]
+                """
+
+    def __call__(self, text) -> str:
+        return self.clean_text(self.template.format(BODY=text))
 
 
-class HfAPICaller:
+class HfApiClient:
     """
     APIModel class is used to generate summaries by calling the HuggingFace API.
 
@@ -106,14 +114,13 @@ class HfAPICaller:
         self._tokenizer = AutoTokenizer.from_pretrained(
             self._model_name, use_auth_token=config["HF_API_TOKEN"]
         )
-        # self._api_token = os.environ['HF_API_TOKEN']
         self._max_length = 4096
         self._retry_sleep = 30
         self._retry_attempts = 0
         self._retry_max_attempts = 2
         self._templates = LlamaTemplates()
         self._parameters = {
-            "max_length": 4000,
+            "max_length": 4096,
             "max_new_tokens": 1000,
             "top_k": 10,
             "return_full_text": False,
@@ -132,19 +139,26 @@ class HfAPICaller:
 
         return results
 
-    def api_call(self, payload: dict) -> dict:
+    def api_call(
+        self, body_text: str, template: LlamaTemplates, parameters, options
+    ) -> dict:
         API_URL = self._api_url
         headers = {
             "Authorization": f"Bearer {self._api_token}",
             "content-type": "application/json",
         }
 
+        query = template(body_text)
+        payload = {"inputs": query, "parameters": parameters, "options": options}
+
         response = requests.post(API_URL, headers=headers, json=payload)
 
         # If error true, sleep for 30 seconds and
         # try again.
         # If error still true, return error message.
-        if (response.status_code == 503 or response.status_code == 429) and (
+        status = response.status_code
+        # In case the service isn't ready or overloaded
+        if (status == 503 or status == 429) and (
             self._retry_attempts < self._retry_max_attempts
         ):
             logging.info(
@@ -153,14 +167,35 @@ class HfAPICaller:
             self._retry_attempts += 1
             sleep(self._retry_sleep)
             logging.info(f"Retrying now")
-            self.api_call(payload)
-        elif (
-            response.status_code == 503
-            and self._retry_attempts >= self._retry_max_attempts
-        ):
+            return self.api_call(body_text, template, parameters, options)
+
+        # In case there are too many failures
+        elif status == 503 and self._retry_attempts >= self._retry_max_attempts:
             self._retry_attempts = 0
             logging.warn(f"Retry limit reached. Returning error")
             raise ResourceWarning("Retry limit reached. Returning an error")
+
+        # In case text is too long
+        elif status == 422:
+            logging.warn(
+                f"Error calling HF with {response.status_code} and message {response.content}. For: {body_text[:20]}"
+            )
+            # count tokens of body text
+            text_tokens_ids = self._tokenizer(body_text, return_tensors="pt").input_ids
+            text_num_tokens = len(text_tokens_ids[0])
+
+            # count tokens of prompt
+            template_tokens_ids = self._tokenizer(
+                template.getTemplate(), return_tensors="pt"
+            ).input_ids
+            template_num_tokens = len(template_tokens_ids[0])
+
+            ## New max length take into account the token in the template
+            new_max_length = self._max_length - template_num_tokens
+            logging.info(f"New max length is: {new_max_length}")
+            new_body_text = truncate_text(body_text, new_max_length, text_num_tokens)
+            logging.info(f"New body text length is {len(new_body_text)}")
+            return self.api_call(new_body_text, template, parameters, options)
 
         elif response.status_code == 200:
             try:
@@ -174,8 +209,13 @@ class HfAPICaller:
             except json.JSONDecodeError:
                 logging.error(f"Error decoding JSON response: {response}")
                 return None
+        else:
+            logging.error(
+                f"Response from HF API isn't right. Status code: {response.status_code} Contenct {response.content}"
+            )
+            return None
 
-    def generate(self, query) -> str:
+    def generate(self, body_text: str, template: LlamaTemplates) -> str:
         parameters = {
             "max_length": 4000,
             "max_new_tokens": 1000,
@@ -189,15 +229,13 @@ class HfAPICaller:
         }
         options = {"use_cache": False}
 
-        logging.info(f"Sending query to API: {query[:20]}...")
-
-        payload = {"inputs": query, "parameters": parameters, "options": options}
+        logging.info(f"Sending query to API with template: {template.__name__}...")
 
         try:
-            results = self.api_call(payload)
+            results = self.api_call(body_text, template, parameters, options)
 
             if results == None:
-                logging.error(f"API Call Error for query: {query[:40]}")
+                logging.error(f"API Call Error for template: {template.__name__}")
                 return None
             else:
                 logging.info(
@@ -213,7 +251,7 @@ class HfAPICaller:
 
 
 if __name__ == "__main__":
-    model = HfAPICaller()
+    model = HfApiClient()
     logging.info("Generating summary")
     query = model._templates.summarize(
         """The US has passed the peak on new coronavirus cases, \

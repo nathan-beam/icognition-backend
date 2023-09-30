@@ -29,7 +29,7 @@ def get_webpage(url: str) -> BeautifulSoup:
     try:
         response = requests.get(url)
         content = response.text
-        soup = BeautifulSoup(content, "lxml")
+        soup = BeautifulSoup(content, "html.parser")
         return soup
     except Exception as e:
         logging.error(f"Error getting webpage: {url} with error: {e}")
@@ -37,6 +37,7 @@ def get_webpage(url: str) -> BeautifulSoup:
 
 
 def get_paragraphs(soup: BeautifulSoup) -> list[str]:
+    # HBS article tag: article = soup.select('div[class*="article-body"]')
     articles = soup.find_all("article")
 
     if articles == None:
@@ -81,8 +82,11 @@ def get_title(soup: BeautifulSoup) -> str:
 
 
 def extract_author_medium(soup: BeautifulSoup) -> str:
-    author = soup.find(attrs={"data-testid": "authorName"}).text
-    return author
+    try:
+        author = soup.find(attrs={"data-testid": "authorName"}).text
+        return author
+    except:
+        logging.error(f"Cloud not extract author")
 
 
 def clean_url(url: str) -> str:
@@ -96,7 +100,7 @@ def clean_url(url: str) -> str:
     """
     url = urlparse.unquote(url)
     # Define the regex
-    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-\@]*)"
+    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-\@\%]*)"
 
     # Match the regex against the URL
     matches = re.findall(page_regex, url)

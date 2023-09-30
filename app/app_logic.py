@@ -3,8 +3,13 @@ import sys
 import logging
 from app import html_parser
 from app.models import Bookmark, Keyphrase, WD_ItemVector, Page, Document
-from app.hf_api_caller import HfAPICaller, LlamaTemplates
-from app.spacy_ner_caller import NerCaller
+from app.hf_api_client import (
+    HfApiClient,
+    PeopleCompaniesPlacesTemplate,
+    ConceptsTemplate,
+    BulletPointTemplate,
+)
+from app.spacy_ner_client import NerClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
@@ -22,8 +27,8 @@ config = dotenv_values(".env")
 engine = create_engine(config["LOCAL_PSQL"])
 
 
-hf_caller = HfAPICaller()
-ner_caller = NerCaller()
+hf_client = HfApiClient()
+ner_client = NerClient()
 
 
 def delete_bookmark_and_associate_records(bookmark_id) -> None:
@@ -108,7 +113,6 @@ def generate_document(page: Page, bookmark_id: int):
     """
 
     session = Session(engine)
-    templates = LlamaTemplates()
     doc = Document()
     doc.title = page.title
     doc.url = page.clean_url
@@ -117,40 +121,43 @@ def generate_document(page: Page, bookmark_id: int):
     session.add(doc)
     session.commit()
 
-    concepts_query = templates.concepts(page.full_text)
-    bp_query = templates.bullet_points(page.full_text)
-    en_query = templates.people_org_places(page.full_text)
+    try:
+        found_entities_raw = hf_client.generate(
+            page.full_text, PeopleCompaniesPlacesTemplate()
+        )
+        concepts = hf_client.generate(page.full_text, ConceptsTemplate())
+        summary_bullet_points = hf_client.generate(
+            page.full_text, BulletPointTemplate()
+        )
+        ner_entities = ner_client(page.full_text)
 
-    found_entities_raw = hf_caller.generate(en_query)
-    concepts = hf_caller.generate(concepts_query)
-    summary_bullet_points = hf_caller.generate(bp_query)
+        if found_entities_raw:
+            doc.llama2_entities_raw = found_entities_raw
+        else:
+            logging.info(f"No entities found for url {page.clean_url}")
 
-    ner_entities = ner_caller(page.full_text)
+        if concepts:
+            doc.concepts_generated = concepts
+        else:
+            logging.info(f"No summary generated for url {page.clean_url}")
+        if summary_bullet_points:
+            doc.summary_bullet_points = summary_bullet_points
+        else:
+            logging.info(f"No bullet points generated for url {page.clean_url}  ")
 
-    if found_entities_raw:
-        doc.llama2_entities_raw = found_entities_raw
-    else:
-        logging.info(f"No entities found for url {page.clean_url}")
+        if ner_entities:
+            doc.spacy_entities_json = ner_entities
+        else:
+            logging.info(f"No NER entities were found")
 
-    if concepts:
-        doc.concepts_generated = concepts
-    else:
-        logging.info(f"No summary generated for url {page.clean_url}")
-    if summary_bullet_points:
-        doc.summary_bullet_points = summary_bullet_points
-    else:
-        logging.info(f"No bullet points generated for url {page.clean_url}  ")
-
-    if ner_entities:
-        doc.spacy_entities_json = ner_entities
-    else:
-        logging.info(f"No NER entities were found")
-
-    doc.update_at = datetime.datetime.now()
-    doc.status = "Done"
-
-    session.commit()
-    session.close()
+        doc.update_at = datetime.datetime.now()
+        doc.status = "Done"
+    except Exception as e:
+        doc.status = "Failure"
+        logging.error(f"Error generating with LLM {e}")
+    finally:
+        session.commit()
+        session.close()
 
 
 def generate_bookmark(page: Page) -> Bookmark:
@@ -176,7 +183,6 @@ def generate_bookmark(page: Page) -> Bookmark:
     bookmark.update_at = datetime.datetime.now()
 
     session.add(bookmark)
-    # session.add(doc)
     session.commit()
 
     logging.info(f"Bookmark was created with id {bookmark.id}")

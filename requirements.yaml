@@ -1,3 +1,4 @@
+# python -c "import nltk; nltk.download('punkt')"
 name: hugface
 channels:
   - conda-forge
