@@ -51,7 +51,7 @@ class BulletPointTemplate(LlamaTemplates):
                 If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. 
                 If you don't know the answer to a question, please don't share false information.
                 <</SYS>>
-                Write up to six points that summarize the following text: {BODY} [/INST]"""
+                Write up to six points that summarize the text between double quotes: ""{BODY}"" [/INST]"""
 
     def __call__(self, text) -> str:
         return self.clean_text(self.template.format(BODY=text))
@@ -85,7 +85,7 @@ class ConceptsTemplate(LlamaTemplates):
                 explain why instead of answering something not correct. 
                 If you don't know the answer to a question, please don't share false information.
                 <</SYS>>
-                Identify the up to 5 key concepts mentioned in the text between the double quotes. Format the output as  <c>[CONCEPT]</c><e>[EXPLANATION]</e> ""{BODY}"" [/INST]
+                Identify the top five to 8 important concepts mentioned in the text between the double quotes. Write you results in this format <c>[Concept Name]</c><e>[Explain the concept]</e> ""{BODY}"" [/INST]
                 """
 
     def __call__(self, text) -> str:

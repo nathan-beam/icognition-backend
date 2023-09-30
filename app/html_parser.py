@@ -29,7 +29,7 @@ def get_webpage(url: str) -> BeautifulSoup:
     try:
         response = requests.get(url)
         content = response.text
-        soup = BeautifulSoup(content, "lxml")
+        soup = BeautifulSoup(content, "html.parser")
         return soup
     except Exception as e:
         logging.error(f"Error getting webpage: {url} with error: {e}")
@@ -100,7 +100,7 @@ def clean_url(url: str) -> str:
     """
     url = urlparse.unquote(url)
     # Define the regex
-    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-\@]*)"
+    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-\@\%]*)"
 
     # Match the regex against the URL
     matches = re.findall(page_regex, url)
