@@ -10,6 +10,12 @@ class URL(SQLModel, table=False):
     url: Optional[str] = Field(default=None)
 
 
+class DocRequest(SQLModel, table=False):
+    url: Optional[str] = Field(default=None, nullable=True)
+    bookmark_id: Optional[int] = Field(default=None, nullable=True)
+    document_id: Optional[int] = Field(default=None, nullable=True)
+
+
 class HTTPError(SQLModel, table=False):
     detail: Optional[str] = Field(default=None)
 
@@ -34,6 +40,7 @@ class Document(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(default=None)
     url: str = Field(default=None)
+    original_text: str = Field(default=None, nullable=True)
     authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=None)
     summary_generated: str = Field(default=None)
     concepts_generated: str = Field(default=None)
@@ -42,7 +49,6 @@ class Document(SQLModel, table=True):
     spacy_entities_json: List = Field(default=[], sa_column=Column(JSON))
     publication_date: datetime = Field(default=None)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
-    bookmark_id: int = Field(default=None, nullable=True)
     status: str = Field(default="Pending", nullable=True)
 
 

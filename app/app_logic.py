@@ -36,9 +36,11 @@ def delete_bookmark_and_associate_records(bookmark_id) -> None:
     This function deletes a bookmark and all associated records from the database.
     This function was create for testing purposes.
     """
+    doc = get_document_by_bookmark_id(bookmark_id)
+
     logging.info(f"Deleting bookmark {bookmark_id} and associated records")
     with Session(engine) as session:
-        session.execute(delete(Document).where(Document.bookmark_id == bookmark_id))
+        session.execute(delete(Document).where(Document.id == doc.id))
         session.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
         session.commit()
         logging.info(f"Bookmark {bookmark_id} and associated records deleted")
@@ -52,12 +54,16 @@ def delete_all_of_users_records(user_id: int) -> None:
     """
     bookmarks = get_bookmark_by_user_id(user_id)
     for bookmark in bookmarks:
-        delete_bookmark_and_associate_records(bookmark.document_id)
+        delete_bookmark_and_associate_records(bookmark.id)
 
 
 def get_document_by_bookmark_id(bookmark_id) -> Document:
     session = Session(engine)
-    doc = session.scalar(select(Document).where(Document.bookmark_id == bookmark_id))
+    doc = session.scalar(
+        select(Document)
+        .join(Bookmark, Bookmark.document_id == Document.id)
+        .where(Bookmark.id == bookmark_id)
+    )
     session.close()
     return doc
 
@@ -106,44 +112,59 @@ def create_page(url: str) -> Page:
     return page
 
 
-def generate_document(page: Page, bookmark_id: int):
+def create_document(page: Page):
+    session = Session(engine)
+    doc = session.scalar(select(Document).where(Document.url == page.clean_url))
+
+    ## If Document isn't already exist, create it
+    if doc:
+        session.close()
+        return doc
+
+    doc = Document()
+    doc.title = page.title
+    doc.url = page.clean_url
+    doc.original_text = page.full_text
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+    session.close()
+
+    return doc
+
+
+def extract_meaning(doc: Document):
     """
     Function that takes pages and return a document with the generated summary,
     bullet points and entities generate by LLM
     """
 
     session = Session(engine)
-    doc = Document()
-    doc.title = page.title
-    doc.url = page.clean_url
-    doc.bookmark_id = bookmark_id
-    doc.status = "Processing"
     session.add(doc)
-    session.commit()
 
     try:
         found_entities_raw = hf_client.generate(
-            page.full_text, PeopleCompaniesPlacesTemplate()
+            doc.original_text, PeopleCompaniesPlacesTemplate()
         )
-        concepts = hf_client.generate(page.full_text, ConceptsTemplate())
+        concepts = hf_client.generate(doc.original_text, ConceptsTemplate())
         summary_bullet_points = hf_client.generate(
-            page.full_text, BulletPointTemplate()
+            doc.original_text, BulletPointTemplate()
         )
-        ner_entities = ner_client(page.full_text)
+        ner_entities = ner_client(doc.original_text)
 
         if found_entities_raw:
             doc.llama2_entities_raw = found_entities_raw
         else:
-            logging.info(f"No entities found for url {page.clean_url}")
+            logging.info(f"No entities found for url {doc.url}")
 
         if concepts:
             doc.concepts_generated = concepts
         else:
-            logging.info(f"No summary generated for url {page.clean_url}")
+            logging.info(f"No summary generated for url {doc.url}")
         if summary_bullet_points:
             doc.summary_bullet_points = summary_bullet_points
         else:
-            logging.info(f"No bullet points generated for url {page.clean_url}  ")
+            logging.info(f"No bullet points generated for url {doc.url}  ")
 
         if ner_entities:
             doc.spacy_entities_json = ner_entities
@@ -160,7 +181,7 @@ def generate_document(page: Page, bookmark_id: int):
         session.close()
 
 
-def generate_bookmark(page: Page) -> Bookmark:
+def create_bookmark(page: Page) -> Bookmark:
     session = Session(engine)
 
     # Check if document exists, retrieve the bookmark and keyphrases and return
@@ -178,13 +199,16 @@ def generate_bookmark(page: Page) -> Bookmark:
         session.close()
         return bookmark
 
+    doc = create_document(page)
+
     bookmark = Bookmark()
     bookmark.url = page.clean_url
     bookmark.update_at = datetime.datetime.now()
+    bookmark.document_id = doc.id
 
     session.add(bookmark)
     session.commit()
-
+    session.refresh(bookmark)
     logging.info(f"Bookmark was created with id {bookmark.id}")
 
     session.close()
