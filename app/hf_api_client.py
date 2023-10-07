@@ -85,7 +85,8 @@ class ConceptsTemplate(LlamaTemplates):
                 explain why instead of answering something not correct. 
                 If you don't know the answer to a question, please don't share false information.
                 <</SYS>>
-                Identify the top five to 8 important concepts mentioned in the text between the double quotes. Write you results in this format <c>[Concept Name]</c><e>[Explain the concept]</e> ""{BODY}"" [/INST]
+                Identify the top 5 to 8 general concepts and ideas mentioned in the text between the double quotes, 
+                and ddd an explanation that describe the idea without referring to the text. ""{BODY}"" [/INST]
                 """
 
     def __call__(self, text) -> str:
@@ -223,7 +224,7 @@ class HfApiClient:
             "return_full_text": False,
             "do_sample": True,
             "num_return_sequences": 1,
-            "temperature": 0.7,
+            "temperature": 0.2,
             "repetition_penalty": 1.0,
             "length_penalty": 1.0,
         }
@@ -248,48 +249,3 @@ class HfApiClient:
         except Exception as e:
             logging.error(e)
             raise Exception(e)
-
-
-if __name__ == "__main__":
-    model = HfApiClient()
-    logging.info("Generating summary")
-    query = model._templates.summarize(
-        """The US has passed the peak on new coronavirus cases, \
-        President <NAME> said and predicted that some states would reopen this month. The US has over 637,000 confirmed \
-        Covid-19 cases and over 30,826 deaths, the highest for any country in the world. At the daily White House coronavirus briefing on Wednesday,\
-        Trump said new guidelines to reopen the country would"""
-    )
-
-    print(model.generate(query))
-
-    query = model._templates.buletPoints(
-        """Evidence that dozens of women were groomed into online sex work by members of influencer Andrew Tate's "War Room" group has been uncovered by the BBC.
-Leaked internal chat logs identify 45 potential victims between March 2019 and April 2020 but the total number is likely to be higher.
-The texts also appear to show the techniques used by War Room members to exploit possible victims.
-Mr Tate denies any wrongdoing and says he is prepared to defend his innocence.
-Warning: Some readers may find details of this report disturbing
-A statement issued by his press officer said the BBC's findings represent "another brazen attempt to present one-sided, unverified" allegations against him.
-The 36-year-old former kickboxer has been charged in Romania with rape and human trafficking.
-On 4 August he was released from house arrest pending his trial. Last week details of graphic evidence compiled by Romanian prosecutors were revealed by the BBC.
-His brother Tristan and two associates also face charges. All have denied the allegations.
-The BBC's latest investigation - outlined in the documentary Andrew Tate: The Man Who Groomed the World? - centres on 12,000 pages of encrypted Telegram messages sent by hundreds of War Room members.
-However the BBC's access to the logs was limited to those sent over a period of 13 months - so the total number of women possibly targeted and exploited by the group, which was formed in 2019, could be much higher"""
-    )
-
-    print(model.generate(query))
-
-    query = model._templates.peopleOrgPlaces(
-        """Evidence that dozens of women were groomed into online sex work by members of influencer Andrew Tate's "War Room" group has been uncovered by the BBC.
-Leaked internal chat logs identify 45 potential victims between March 2019 and April 2020 but the total number is likely to be higher.
-The texts also appear to show the techniques used by War Room members to exploit possible victims.
-Mr Tate denies any wrongdoing and says he is prepared to defend his innocence.
-Warning: Some readers may find details of this report disturbing
-A statement issued by his press officer said the BBC's findings represent "another brazen attempt to present one-sided, unverified" allegations against him.
-The 36-year-old former kickboxer has been charged in Romania with rape and human trafficking.
-On 4 August he was released from house arrest pending his trial. Last week details of graphic evidence compiled by Romanian prosecutors were revealed by the BBC.
-His brother Tristan and two associates also face charges. All have denied the allegations.
-The BBC's latest investigation - outlined in the documentary Andrew Tate: The Man Who Groomed the World? - centres on 12,000 pages of encrypted Telegram messages sent by hundreds of War Room members.
-However the BBC's access to the logs was limited to those sent over a period of 13 months - so the total number of women possibly targeted and exploited by the group, which was formed in 2019, could be much higher"""
-    )
-
-    print(model.generate(query))
