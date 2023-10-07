@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from app.models import Bookmark, Document, Keyphrase, URL
+from app.models import Bookmark, Document, DocRequest, URL
 import logging
 import sys
 import uvicorn
@@ -66,22 +66,37 @@ async def create_bookmark(url: URL, background_tasks: BackgroundTasks):
         )
 
     logging.info(f"Page object created for {page.clean_url}")
-    bookmark = app_logic.generate_bookmark(page)
+    bookmark = await app_logic.create_bookmark(page)
     logging.info(f"Bookmark created for {bookmark.url}")
-    background_tasks.add_task(generate_document, page, bookmark.id)
+    background_tasks.add_task(generate_document, bookmark.document_id)
     return bookmark
 
 
-## Background task to generate summaries from LLM
-async def generate_document(page, bookmark_id):
-    logging.info(
-        f"Background task for generating document for bookmark ID {bookmark_id}"
-    )
-    app_logic.generate_document(page, bookmark_id)
+@app.post("/document", status_code=status.HTTP_202_ACCEPTED)
+async def regenerate_document(req: DocRequest, background_tasks: BackgroundTasks):
+    """
+    This method create document using a bookmark id and a URL.
+    Because create_bookmark also generate document, this method is use to re-generate
+    the a document. Because it can take time to generate a document, this method
+    kickoff the generate and return 202
+    """
+    logging.info(f"Regenrate Document ID {req.document_id} and url {req.url}")
+
+    # Generate LLM content in a background process
+    background_tasks.add_task(generate_document, req.document_id)
+
+
+## Background task to generate summaries from LLM if not already exists
+async def generate_document(document_id):
+    doc = app_logic.get_document_by_id(document_id)
+
+    if doc.status in ["Pending", "Done", "Failure"]:
+        logging.info(f"Background task for generating document ID {document_id}")
+        await app_logic.extract_meaning(doc)
 
 
 @app.get("/bookmark", response_model=Bookmark, status_code=200)
-async def get_bookmark(url: str):
+async def get_bookmark_by_url(url: str):
     bookmark = app_logic.get_bookmark_by_url(url)
 
     if bookmark is None:
@@ -103,20 +118,26 @@ async def get_bookmark_document(id: int, response: Response):
     if document.status == "Processing":
         response.status_code = status.HTTP_206_PARTIAL_CONTENT
         return document
-    if document.status == "Done":
+    else:
         response.status_code = status.HTTP_200_OK
         return document
 
 
-@app.get("/document/{id}", response_model=Document, status_code=200)
-async def get_document(id: int):
+@app.get("/document/{id}", response_model=Document)
+async def get_document(id: int, response: Response):
     logging.info(f"Icognition document endpoint called on {id}")
     document = app_logic.get_document_by_id(id)
 
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    return document
+    # If document is still in processing, let the client know
+    if document.status == "Processing":
+        response.status_code = status.HTTP_206_PARTIAL_CONTENT
+        return document
+    else:
+        response.status_code = status.HTTP_200_OK
+        return document
 
 
 @app.delete("/bookmark/{id}/document", status_code=204)
