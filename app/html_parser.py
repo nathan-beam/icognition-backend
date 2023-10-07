@@ -100,7 +100,7 @@ def clean_url(url: str) -> str:
     """
     url = urlparse.unquote(url)
     # Define the regex
-    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-\@\%]*)"
+    page_regex = r"(http.*:\/\/[a-zA-Z0-9:\/\.\-\@\%\_]*)"
 
     # Match the regex against the URL
     matches = re.findall(page_regex, url)

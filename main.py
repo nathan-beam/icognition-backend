@@ -66,7 +66,7 @@ async def create_bookmark(url: URL, background_tasks: BackgroundTasks):
         )
 
     logging.info(f"Page object created for {page.clean_url}")
-    bookmark = app_logic.create_bookmark(page)
+    bookmark = await app_logic.create_bookmark(page)
     logging.info(f"Bookmark created for {bookmark.url}")
     background_tasks.add_task(generate_document, bookmark.document_id)
     return bookmark
@@ -90,9 +90,9 @@ async def regenerate_document(req: DocRequest, background_tasks: BackgroundTasks
 async def generate_document(document_id):
     doc = app_logic.get_document_by_id(document_id)
 
-    if doc.status == "Pending" or doc.status == "Done":
+    if doc.status in ["Pending", "Done", "Failure"]:
         logging.info(f"Background task for generating document ID {document_id}")
-        app_logic.extract_meaning(doc)
+        await app_logic.extract_meaning(doc)
 
 
 @app.get("/bookmark", response_model=Bookmark, status_code=200)

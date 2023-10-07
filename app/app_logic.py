@@ -75,11 +75,18 @@ def get_document_by_id(document_id) -> Document:
     return doc
 
 
-def get_document_by_url(url) -> Bookmark:
+def get_document_by_url(url) -> Document:
     session = Session(engine)
-    doc = session.scalar(select(Bookmark).where(Bookmark.url == url))
+    doc = session.scalar(select(Document).where(Document.url == url))
     session.close()
     return doc
+
+
+def get_documents_ids() -> list[int]:
+    session = Session(engine)
+    docs_ids = session.scalars(select(Document.id))
+    session.close()
+    return docs_ids
 
 
 def get_keyphrases_by_document_id(document_id) -> Keyphrase:
@@ -112,7 +119,7 @@ def create_page(url: str) -> Page:
     return page
 
 
-def create_document(page: Page):
+async def create_document(page: Page):
     session = Session(engine)
     doc = session.scalar(select(Document).where(Document.url == page.clean_url))
 
@@ -133,14 +140,22 @@ def create_document(page: Page):
     return doc
 
 
-def extract_meaning(doc: Document):
+async def update_document(doc: Document):
+    with Session(engine) as session:
+        session.add(doc)
+        session.commit()
+        session.refresh(doc)
+        return doc
+
+
+async def extract_meaning(doc: Document):
     """
     Function that takes pages and return a document with the generated summary,
     bullet points and entities generate by LLM
     """
 
-    session = Session(engine)
-    session.add(doc)
+    doc.status = "Processing"
+    await update_document(doc)
 
     try:
         found_entities_raw = hf_client.generate(
@@ -173,15 +188,15 @@ def extract_meaning(doc: Document):
 
         doc.update_at = datetime.datetime.now()
         doc.status = "Done"
+
     except Exception as e:
         doc.status = "Failure"
         logging.error(f"Error generating with LLM {e}")
     finally:
-        session.commit()
-        session.close()
+        await update_document(doc)
 
 
-def create_bookmark(page: Page) -> Bookmark:
+async def create_bookmark(page: Page) -> Bookmark:
     session = Session(engine)
 
     # Check if document exists, retrieve the bookmark and keyphrases and return
@@ -199,7 +214,7 @@ def create_bookmark(page: Page) -> Bookmark:
         session.close()
         return bookmark
 
-    doc = create_document(page)
+    doc = await create_document(page)
 
     bookmark = Bookmark()
     bookmark.url = page.clean_url
