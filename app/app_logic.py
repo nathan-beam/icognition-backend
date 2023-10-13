@@ -2,7 +2,8 @@ import datetime
 import sys
 import logging
 from app import html_parser
-from app.models import Bookmark, Keyphrase, WD_ItemVector, Page, Document
+from app.models import Bookmark, Keyphrase, Page, Document, Entity, Concept
+from app.process_exacted_info import ProcessConcepts, ProcessEntities
 from app.hf_api_client import (
     HfApiClient,
     PeopleCompaniesPlacesTemplate,
@@ -29,6 +30,8 @@ engine = create_engine(config["LOCAL_PSQL"])
 
 hf_client = HfApiClient()
 ner_client = NerClient()
+process_entities = ProcessEntities()
+process_concepts = ProcessConcepts()
 
 
 def delete_bookmark_and_associate_records(bookmark_id) -> None:
@@ -42,6 +45,8 @@ def delete_bookmark_and_associate_records(bookmark_id) -> None:
     with Session(engine) as session:
         session.execute(delete(Document).where(Document.id == doc.id))
         session.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
+        session.execute(delete(Entity).where(Entity.document_id == doc.id))
+        session.execute(delete(Concept).where(Concept.document_id == doc.id))
         session.commit()
         logging.info(f"Bookmark {bookmark_id} and associated records deleted")
 
@@ -145,7 +150,16 @@ async def update_document(doc: Document):
         session.add(doc)
         session.commit()
         session.refresh(doc)
-        return doc
+
+    if doc.spacy_entities_json:
+        entities = await process_entities(document_id=doc.id)
+        if entities:
+            await add_list_of_orms(entities)
+
+    if doc.concepts_generated:
+        concepts = await process_concepts(document_id=doc.id)
+        if concepts:
+            await add_list_of_orms(concepts)
 
 
 async def extract_meaning(doc: Document):
@@ -194,6 +208,12 @@ async def extract_meaning(doc: Document):
         logging.error(f"Error generating with LLM {e}")
     finally:
         await update_document(doc)
+
+
+async def add_list_of_orms(Object):
+    with Session(engine) as session:
+        session.add_all(Object)
+        session.commit()
 
 
 async def create_bookmark(page: Page) -> Bookmark:
@@ -260,3 +280,19 @@ def get_bookmark_by_id(id: int) -> Bookmark:
     bookmark = session.scalar(select(Bookmark).where(Bookmark.id == id))
     session.close()
     return bookmark
+
+
+def get_entities_by_document_id(document_id: int) -> list[Entity]:
+    with Session(engine) as session:
+        entities = session.scalars(
+            select(Entity).where(Entity.document_id == document_id)
+        ).all()
+    return entities
+
+
+def get_concepts_by_document_id(document_id: int) -> list[Concept]:
+    with Session(engine) as session:
+        concepts = session.scalars(
+            select(Concept).where(Concept.document_id == document_id)
+        ).all()
+    return concepts

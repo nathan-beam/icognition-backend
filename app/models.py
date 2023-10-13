@@ -52,6 +52,38 @@ class Document(SQLModel, table=True):
     status: str = Field(default="Pending", nullable=True)
 
 
+class Concept(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    document_id: Optional[int] = Field(nullable=False)
+    name: Optional[str] = Field(nullable=False)
+    description: Optional[str] = Field(nullable=True)
+    concept_vector: Optional[List[float]] = Field(
+        sa_column=Column(Vector(384)), default=None, nullable=True
+    )
+    description_vector: Optional[List[float]] = Field(
+        sa_column=Column(Vector(384)), default=None, nullable=True
+    )
+    history_json: Optional[List] = Field(default=[], sa_column=Column(JSON))
+
+
+class TLDR(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    document_id: Optional[int] = Field(nullable=False)
+    description: Optional[str] = Field(nullable=False)
+    description_vector: Optional[List[float]] = Field(
+        sa_column=Column(Vector(384)), default=None, nullable=True
+    )
+
+
+class Entity(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    document_id: Optional[int] = Field(nullable=False)
+    name: Optional[str] = Field(nullable=False)
+    type: Optional[str] = Field(nullable=False)
+    wikidata_id: Optional[str] = Field(nullable=True)
+    description: Optional[str] = Field(nullable=True)
+
+
 class Keyphrase(SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     word: str
