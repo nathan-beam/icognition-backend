@@ -85,8 +85,8 @@ class ConceptsTemplate(LlamaTemplates):
                 explain why instead of answering something not correct. 
                 If you don't know the answer to a question, please don't share false information.
                 <</SYS>>
-                Identify the top 5 to 8 general concepts and ideas mentioned in the text between the double quotes, 
-                and ddd an explanation that describe the idea without referring to the text. ""{BODY}"" [/INST]
+                In the text between the double quotes. Identify the top 5 to 8 general concepts, subjects and ideas 
+                and add an explanation that describe them. Avoid referring to the text. ""{BODY}"" [/INST]
                 """
 
     def __call__(self, text) -> str:

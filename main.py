@@ -93,6 +93,10 @@ async def generate_document(document_id):
     if doc.status in ["Pending", "Done", "Failure"]:
         logging.info(f"Background task for generating document ID {document_id}")
         await app_logic.extract_meaning(doc)
+    else:
+        logging.info(
+            f"generate_document, not meeting Document status filter. Status is {doc.status}"
+        )
 
 
 @app.get("/bookmark", response_model=Bookmark, status_code=200)

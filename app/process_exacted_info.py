@@ -49,7 +49,10 @@ class ProcessConcepts:
                 if match:
                     name = match.group(1).strip() if match.group(1) else None
                     desc = match.group(2).strip() if (len(match.groups()) > 1) else None
-                    con = Concept(name=name, description=desc, document_id=document_id)
+                    id = int(f"{document_id}{len(results)+1}")
+                    con = Concept(
+                        id=id, name=name, description=desc, document_id=document_id
+                    )
                     results.append(con)
                     break  # stop testing different regex
 
@@ -92,7 +95,9 @@ class ProcessEntities:
         results = []
         filtered = [e for e in entities if e["label"] in self.spacy_labels]
         for f in filtered:
+            id = int(f"{document_id}{len(results)+1}")
             ent = Entity(
+                id=id,
                 document_id=document_id,
                 name=f["text"],
                 type=f["label"],

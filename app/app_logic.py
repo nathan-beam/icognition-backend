@@ -2,7 +2,16 @@ import datetime
 import sys
 import logging
 from app import html_parser
-from app.models import Bookmark, Keyphrase, Page, Document, Entity, Concept
+from app.models import (
+    Bookmark,
+    Keyphrase,
+    Page,
+    Document,
+    Entity,
+    Concept,
+    ConceptDoc,
+    EntitytDoc,
+)
 from app.process_exacted_info import ProcessConcepts, ProcessEntities
 from app.hf_api_client import (
     HfApiClient,
@@ -11,7 +20,7 @@ from app.hf_api_client import (
     BulletPointTemplate,
 )
 from app.spacy_ner_client import NerClient
-from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
+from sqlalchemy import select, delete, create_engine, and_, text
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
 
@@ -154,12 +163,12 @@ async def update_document(doc: Document):
     if doc.spacy_entities_json:
         entities = await process_entities(document_id=doc.id)
         if entities:
-            await add_list_of_orms(entities)
+            await add_entities(entities, doc.id)
 
     if doc.concepts_generated:
         concepts = await process_concepts(document_id=doc.id)
         if concepts:
-            await add_list_of_orms(concepts)
+            await add_concepts(concepts, doc.id)
 
 
 async def extract_meaning(doc: Document):
@@ -169,7 +178,10 @@ async def extract_meaning(doc: Document):
     """
 
     doc.status = "Processing"
-    await update_document(doc)
+    with Session(engine) as session:
+        session.add(doc)
+        session.commit()
+        session.refresh(doc)
 
     try:
         found_entities_raw = hf_client.generate(
@@ -210,9 +222,46 @@ async def extract_meaning(doc: Document):
         await update_document(doc)
 
 
-async def add_list_of_orms(Object):
+async def add_entities(entities: list[Entity], document_id: int):
+    ## Check that there are no entities and refs already in the DB
+    delete_ent_str = f"DELETE FROM entity e USING entitytdoc d WHERE d.entity_id = e.id AND d.document_id = {document_id}"
+    delete_ent_sql = text(delete_ent_str)
+
+    delete_ref_str = f"DELETE FROM entitytdoc WHERE document_id = {document_id}"
+    delete_refs = text(delete_ref_str)
+
+    refs = []
+    for entity in entities:
+        ed = EntitytDoc(entity_id=entity.id, document_id=document_id)
+        refs.append(ed)
+
     with Session(engine) as session:
-        session.add_all(Object)
+        session.execute(delete_ent_sql)
+        session.execute(delete_refs)
+        session.commit()
+        session.add_all(entities)
+        session.add_all(refs)
+        session.commit()
+
+
+async def add_concepts(concepts: list[Concept], document_id: int):
+    ## Check that there are no concept and refs already in the DB
+    delete_con_str = f"DELETE FROM concept c USING conceptdoc d WHERE d.concept_id = c.id AND d.document_id = {document_id}"
+    delete_con_sql = text(delete_con_str)
+
+    delete_ref_str = f"DELETE FROM conceptdoc WHERE document_id = {document_id}"
+    delete_refs = text(delete_ref_str)
+    refs = []
+    for concept in concepts:
+        cd = ConceptDoc(concept_id=concept.id, document_id=document_id)
+        refs.append(cd)
+
+    with Session(engine) as session:
+        session.execute(delete_con_sql)
+        session.execute(delete_refs)
+        session.commit()
+        session.add_all(concepts)
+        session.add_all(refs)
         session.commit()
 
 
