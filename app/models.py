@@ -52,7 +52,54 @@ class Document(SQLModel, table=True):
     status: str = Field(default="Pending", nullable=True)
 
 
-class Keyphrase(SQLModel, table=True):
+class DocArtifact(SQLModel, table=False):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+
+class Concept(DocArtifact, table=True):
+    name: Optional[str] = Field(nullable=False)
+    description: Optional[str] = Field(nullable=True)
+    concept_vector: Optional[List[float]] = Field(
+        sa_column=Column(Vector(384)), default=None, nullable=True
+    )
+    description_vector: Optional[List[float]] = Field(
+        sa_column=Column(Vector(384)), default=None, nullable=True
+    )
+    history_json: Optional[List] = Field(default=[], sa_column=Column(JSON))
+
+
+class ConceptDoc(SQLModel, table=True):
+    concept_id: Optional[int] = Field(primary_key=True)
+    document_id: Optional[int] = Field(primary_key=True)
+
+
+class TLDR(DocArtifact, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    description: Optional[str] = Field(nullable=False)
+    description_vector: Optional[List[float]] = Field(
+        sa_column=Column(Vector(384)), default=None, nullable=True
+    )
+
+
+class TLDRDoc(SQLModel, table=True):
+    tldr_id: Optional[int] = Field(primary_key=True)
+    document_id: Optional[int] = Field(primary_key=True)
+
+
+class Entity(DocArtifact, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: Optional[str] = Field(nullable=False)
+    type: Optional[str] = Field(nullable=False)
+    wikidata_id: Optional[str] = Field(nullable=True)
+    description: Optional[str] = Field(nullable=True)
+
+
+class EntitytDoc(SQLModel, table=True):
+    entity_id: Optional[int] = Field(primary_key=True)
+    document_id: Optional[int] = Field(primary_key=True)
+
+
+class Keyphrase(DocArtifact, table=True):
     id: Optional[int] = Field(primary_key=True)
     word: str
     word_vec: List[float] = Field(sa_column=Column(Vector(384)), default=None)
@@ -63,7 +110,6 @@ class Keyphrase(SQLModel, table=True):
     entity_group: Optional[str] = Field(default=None)
     context: Optional[str] = Field(default=None)
     context_vec: List[float] = Field(sa_column=Column(Vector(384)), default=None)
-    document_id: Optional[int] = Field(default=None)
 
 
 class WD_Item(SQLModel, table=True):

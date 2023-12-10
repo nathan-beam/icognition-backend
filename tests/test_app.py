@@ -9,7 +9,7 @@ def test_create_page():
     assert page != None
 
 
-def test_bookmark_page():
+async def test_bookmark_page():
     # Check if bookmark already exist, if yes delete it.
     # This is make the test more realistic.
     bookmark = app_logic.get_bookmark_by_url(url)
@@ -17,7 +17,7 @@ def test_bookmark_page():
         app_logic.delete_bookmark_and_associate_records(bookmark.id)
 
     page = app_logic.create_page(url)
-    app_logic.create_bookmark(page)
+    await app_logic.create_bookmark(page)
     bookmark = app_logic.get_bookmark_by_url(url)
     assert bookmark != None
 
@@ -29,7 +29,7 @@ def test_bookmark_page():
 
     # store the docuement id for future method
     document_id = doc.id
-    app_logic.extract_meaning(doc)
+    await app_logic.extract_meaning(doc)
 
     # Testing the retrivel of document from the database
     doc = None
@@ -50,3 +50,14 @@ def test_bookmark_page():
     assert len(doc.spacy_entities_json) > 0
     assert len(doc.title) > 5
     assert len(doc.url) > 5
+
+    entities = app_logic.get_entities_by_document_id(document_id)
+
+    assert len(entities) > 0
+    assert len(entities[0].name) > 0
+    assert len(entities[0].type) > 0
+
+    concepts = app_logic.get_concepts_by_document_id(document_id)
+
+    assert len(concepts) > 0
+    assert len(concepts[0].name) > 0
