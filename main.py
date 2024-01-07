@@ -66,7 +66,7 @@ async def create_bookmark(url: URL, background_tasks: BackgroundTasks):
         )
 
     logging.info(f"Page object created for {page.clean_url}")
-    bookmark = await app_logic.create_bookmark(page)
+    bookmark = app_logic.create_bookmark(page)
     logging.info(f"Bookmark created for {bookmark.url}")
     background_tasks.add_task(generate_document, bookmark.document_id)
     return bookmark
@@ -92,7 +92,7 @@ async def generate_document(document_id):
 
     if doc.status in ["Pending", "Done", "Failure"]:
         logging.info(f"Background task for generating document ID {document_id}")
-        await app_logic.extract_meaning(doc)
+        app_logic.extract_info_from_doc(doc)
 
 
 @app.get("/bookmark", response_model=Bookmark, status_code=200)
@@ -106,7 +106,7 @@ async def get_bookmark_by_url(url: str):
     return bookmark
 
 
-@app.get("/bookmark/{id}/document", response_model=Document)
+@app.get("/bookmark/{id}/document")
 async def get_bookmark_document(id: int, response: Response):
     logging.info(f"Icognition bookmark document endpoint called on {id}")
     document = app_logic.get_document_by_bookmark_id(id)
@@ -123,7 +123,7 @@ async def get_bookmark_document(id: int, response: Response):
         return document
 
 
-@app.get("/document/{id}", response_model=Document)
+@app.get("/document/{id}")
 async def get_document(id: int, response: Response):
     logging.info(f"Icognition document endpoint called on {id}")
     document = app_logic.get_document_by_id(id)
@@ -138,6 +138,32 @@ async def get_document(id: int, response: Response):
     else:
         response.status_code = status.HTTP_200_OK
         return document
+
+
+@app.get("/document/{id}/concepts")
+async def get_concepts(id: int, response: Response):
+    logging.info(f"Icognition document concepts endpoint called on {id}")
+    concepts = app_logic.get_concepts_by_document_id(id)
+
+    if concepts is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        raise HTTPException(status_code=404, detail="Concepts not found")
+    else:
+        response.status_code = status.HTTP_200_OK
+        return concepts
+
+
+@app.get("/document/{id}/entities")
+async def get_entities(id: int, response: Response):
+    logging.info(f"Icognition document entities endpoint called on {id}")
+    entities = app_logic.get_entities_by_document_id(id)
+
+    if entities is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        raise HTTPException(status_code=404, detail="Entities not found")
+    else:
+        response.status_code = status.HTTP_200_OK
+        return entities
 
 
 @app.delete("/bookmark/{id}/document", status_code=204)

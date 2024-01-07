@@ -2,14 +2,8 @@ import datetime
 import sys
 import logging
 from app import html_parser
-from app.models import Bookmark, Keyphrase, WD_ItemVector, Page, Document
-from app.hf_api_client import (
-    HfApiClient,
-    PeopleCompaniesPlacesTemplate,
-    ConceptsTemplate,
-    BulletPointTemplate,
-)
-from app.spacy_ner_client import NerClient
+from app.models import Bookmark, Entity, Concept, Page, Document
+from app.together_api_client import InclusiveTemplate, TogetherMixtralClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 from dotenv import dotenv_values
@@ -26,9 +20,8 @@ config = dotenv_values(".env")
 
 engine = create_engine(config["LOCAL_PSQL"])
 
-
-hf_client = HfApiClient()
-ner_client = NerClient()
+mixtralClient = TogetherMixtralClient()
+inclusiveTemplate = InclusiveTemplate()
 
 
 def delete_bookmark_and_associate_records(bookmark_id) -> None:
@@ -42,6 +35,8 @@ def delete_bookmark_and_associate_records(bookmark_id) -> None:
     with Session(engine) as session:
         session.execute(delete(Document).where(Document.id == doc.id))
         session.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
+        session.execute(delete(Entity).where(Entity.document_id == doc.id))
+        session.execute(delete(Concept).where(Concept.document_id == doc.id))
         session.commit()
         logging.info(f"Bookmark {bookmark_id} and associated records deleted")
 
@@ -89,25 +84,22 @@ def get_documents_ids() -> list[int]:
     return docs_ids
 
 
-def get_keyphrases_by_document_id(document_id) -> Keyphrase:
+def get_entities_by_document_id(document_id) -> Entity:
     session = Session(engine)
-    keyphrases = session.scalars(
-        select(Keyphrase).where(Keyphrase.document_id == document_id)
+    entities = session.scalars(
+        select(Entity).where(Entity.document_id == document_id)
     ).all()
     session.close()
-    return keyphrases
+    return entities
 
 
-def get_keyphrases_by_document_url(url) -> list[Keyphrase]:
+def get_concepts_by_document_id(document_id) -> Concept:
     session = Session(engine)
-    stmt = (
-        select(Keyphrase)
-        .join(Bookmark, Keyphrase.document_id == Bookmark.id)
-        .where(Bookmark.url == url)
-    )
-    keyphrases = session.scalars(stmt).all()
+    concepts = session.scalars(
+        select(Concept).where(Concept.document_id == document_id)
+    ).all()
     session.close()
-    return keyphrases
+    return concepts
 
 
 def create_page(url: str) -> Page:
@@ -119,7 +111,7 @@ def create_page(url: str) -> Page:
     return page
 
 
-async def create_document(page: Page):
+def create_document(page: Page):
     session = Session(engine)
     doc = session.scalar(select(Document).where(Document.url == page.clean_url))
 
@@ -140,67 +132,94 @@ async def create_document(page: Page):
     return doc
 
 
-async def update_document(doc: Document):
+def update_document(doc: Document, related_objects: list[list] = None):
     with Session(engine) as session:
         session.add(doc)
+
+        if related_objects:
+            logging.info(f"Adding related objects to document {doc.id}")
+            for related_object in related_objects:
+                session.add_all(related_object)
         session.commit()
         session.refresh(doc)
         return doc
 
 
-async def extract_meaning(doc: Document):
+def extract_info_from_doc(doc: Document):
     """
     Function that takes pages and return a document with the generated summary,
     bullet points and entities generate by LLM
     """
 
     doc.status = "Processing"
-    await update_document(doc)
+    update_document(doc)
 
     try:
-        found_entities_raw = hf_client.generate(
-            doc.original_text, PeopleCompaniesPlacesTemplate()
-        )
-        concepts = hf_client.generate(doc.original_text, ConceptsTemplate())
-        summary_bullet_points = hf_client.generate(
-            doc.original_text, BulletPointTemplate()
-        )
-        ner_entities = ner_client(doc.original_text)
+        logging.info(f"Generating summary for document {doc.id}")
+        response = mixtralClient.generate(doc.original_text, inclusiveTemplate)
+        summary_obj = inclusiveTemplate.handleResponse(response)
 
-        if found_entities_raw:
-            doc.llama2_entities_raw = found_entities_raw
+        ## TODO: Add summary and bullet points to document
+        one_line_summary = summary_obj["oneSentenceSummary"]
+        bullet_points = summary_obj["summaryInNumericBulletPoints"]
+        entities = summary_obj["entities"]
+        concepts = summary_obj["concepts_ideas"]
+    except Exception as e:
+        logging.error(f"Error generating with LLM {e}")
+        doc.status = f"Failure in generating summary: {e}"
+        update_document(doc)
+        return
+
+    try:
+        if one_line_summary:
+            doc.short_summary = one_line_summary
         else:
-            logging.info(f"No entities found for url {doc.url}")
+            doc.short_summary = "No summary was generated"
+
+        if bullet_points:
+            doc.summary_bullet_points = bullet_points
+        else:
+            doc.summary_bullet_points = ["No bullet points were generated"]
+
+        if entities:
+            new_entities = []
+            for entity in entities:
+                new_entity = Entity()
+                new_entity.document_id = doc.id
+                new_entity.name = entity["name"]
+                new_entity.description = entity["explanation"]
+                new_entity.type = entity["type"]
+                new_entity.source = mixtralClient._model_name
+                new_entities.append(new_entity)
 
         if concepts:
-            doc.concepts_generated = concepts
-        else:
-            logging.info(f"No summary generated for url {doc.url}")
-        if summary_bullet_points:
-            doc.summary_bullet_points = summary_bullet_points
-        else:
-            logging.info(f"No bullet points generated for url {doc.url}  ")
-
-        if ner_entities:
-            doc.spacy_entities_json = ner_entities
-        else:
-            logging.info(f"No NER entities were found")
+            new_concepts = []
+            for concept in concepts:
+                new_concept = Concept()
+                new_concept.document_id = doc.id
+                new_concept.name = concept["concept"]
+                new_concept.description = concept["explanation"]
+                new_concept.source = mixtralClient._model_name
+                new_concepts.append(new_concept)
 
         doc.update_at = datetime.datetime.now()
         doc.status = "Done"
 
     except Exception as e:
-        doc.status = "Failure"
-        logging.error(f"Error generating with LLM {e}")
-    finally:
-        await update_document(doc)
+        doc.status = f"Failure in storing summary and related objects {e}"
+        logging.error(f"Error creating document summary and related objects {e}")
+        update_document(doc)
+        return
+
+    # If everything went well, update the document and related objects
+    update_document(doc, [new_entities, new_concepts])
 
 
-async def create_bookmark(page: Page) -> Bookmark:
+def create_bookmark(page: Page) -> Bookmark:
     session = Session(engine)
 
-    # Check if document exists, retrieve the bookmark and keyphrases and return
-    # if exists. Else, create the document, bookmark and keyphrase.
+    # Check if document exists, retrieve the bookmark and return
+    # if exists. Else, create the document, bookmark.
     user_id = config["DUMMY_USER"]
 
     bookmark = session.scalar(
@@ -214,7 +233,7 @@ async def create_bookmark(page: Page) -> Bookmark:
         session.close()
         return bookmark
 
-    doc = await create_document(page)
+    doc = create_document(page)
 
     bookmark = Bookmark()
     bookmark.url = page.clean_url
@@ -260,3 +279,21 @@ def get_bookmark_by_id(id: int) -> Bookmark:
     bookmark = session.scalar(select(Bookmark).where(Bookmark.id == id))
     session.close()
     return bookmark
+
+
+def get_entities_by_document_id(document_id) -> list[Entity]:
+    session = Session(engine)
+    entities = session.scalars(
+        select(Entity).where(Entity.document_id == document_id)
+    ).all()
+    session.close()
+    return entities
+
+
+def get_concepts_by_document_id(document_id) -> list[Concept]:
+    session = Session(engine)
+    concepts = session.scalars(
+        select(Concept).where(Concept.document_id == document_id)
+    ).all()
+    session.close()
+    return concepts
