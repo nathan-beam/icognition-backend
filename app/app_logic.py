@@ -154,7 +154,7 @@ def extract_info_from_doc(doc: Document):
     """
 
     doc.status = "Processing"
-    await update_document(doc)
+    update_document(doc)
 
     try:
         logging.info(f"Generating summary for document {doc.id}")
@@ -211,7 +211,7 @@ def extract_info_from_doc(doc: Document):
         doc.status = "Failure"
         logging.error(f"Error generating with LLM {e}")
     finally:
-        await update_document(doc)
+        update_document(doc)
 
 
 def create_bookmark(page: Page) -> Bookmark:
