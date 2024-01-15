@@ -9,7 +9,7 @@ def test_create_page():
     assert page != None
 
 
-def test_bookmark_page():
+async def test_bookmark_page():
     # Check if bookmark already exist, if yes delete it.
     # This is make the test more realistic.
     bookmark = app_logic.get_bookmark_by_url(url)

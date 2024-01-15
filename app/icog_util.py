@@ -45,24 +45,37 @@ def remove_stop_words(string, return_format="String"):
         return " ".join(filtered_tokens)
 
 
-# Write recursive function that tokenizes and splits the text into chunks of 512 tokens
-# Then, use the summarizer to summarize each chunk
 def truncate_text(
-    text: str, max_length: int, num_tokens: int, LANGUAGE="english"
+    text: str, llm_max_tokens: int, number_of_tokens: int, LANGUAGE="english"
 ) -> str:
+    """
+    Truncate_text recursive function that tokenizes and splits the text into chunks of 512 tokens
+    Then, use the LSA summarizer to summarize each chunk
+
+    Args:
+        text (str): The text that need to be truncate
+        llm_max_tokens (int): Maximum number of tokens the LLM support.
+        number_of_tokens (int): The number of LLM tokens that text have
+
+    Retruns:
+        Summary (str)
+    """
+
     summarizer = LsaSummarizer()
 
-    if num_tokens > max_length:
-        logging.info(f"Text is too long. Splitting into chunks of {max_length} tokens")
+    if number_of_tokens > llm_max_tokens:
+        logging.info(
+            f"Text is too long. Splitting into chunks of {llm_max_tokens} tokens"
+        )
         parser = PlaintextParser.from_string(text, Tokenizer(LANGUAGE))
         num_sentences = len(parser.document.sentences)
-        avg_tokens_per_sentence = int(num_tokens / num_sentences)
-        excess_tokens = num_tokens - max_length
+        avg_tokens_per_sentence = int(number_of_tokens / num_sentences)
+        excess_tokens = number_of_tokens - llm_max_tokens
         num_sentences_to_summarize = num_sentences - (
             math.ceil(excess_tokens / avg_tokens_per_sentence)
         )
 
-        logging.info(f"Number of tokens: {num_tokens}.")
+        logging.info(f"Number of tokens: {number_of_tokens}.")
         logging.info(f"Number of sentences: {num_sentences}.")
         logging.info(f"Average tokens per sentence: {avg_tokens_per_sentence}.")
         logging.info(f"Excess tokens: {excess_tokens}.")

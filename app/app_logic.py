@@ -37,6 +37,8 @@ def delete_bookmark_and_associate_records(bookmark_id) -> None:
         session.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
         session.execute(delete(Entity).where(Entity.document_id == doc.id))
         session.execute(delete(Concept).where(Concept.document_id == doc.id))
+        session.execute(delete(Entity).where(Entity.document_id == doc.id))
+        session.execute(delete(Concept).where(Concept.document_id == doc.id))
         session.commit()
         logging.info(f"Bookmark {bookmark_id} and associated records deleted")
 
@@ -152,7 +154,7 @@ def extract_info_from_doc(doc: Document):
     """
 
     doc.status = "Processing"
-    update_document(doc)
+    await update_document(doc)
 
     try:
         logging.info(f"Generating summary for document {doc.id}")
@@ -206,13 +208,10 @@ def extract_info_from_doc(doc: Document):
         doc.status = "Done"
 
     except Exception as e:
-        doc.status = f"Failure in storing summary and related objects {e}"
-        logging.error(f"Error creating document summary and related objects {e}")
-        update_document(doc)
-        return
-
-    # If everything went well, update the document and related objects
-    update_document(doc, [new_entities, new_concepts])
+        doc.status = "Failure"
+        logging.error(f"Error generating with LLM {e}")
+    finally:
+        await update_document(doc)
 
 
 def create_bookmark(page: Page) -> Bookmark:

@@ -50,6 +50,10 @@ class Document(SQLModel, table=True):
     status: str = Field(default="Pending", nullable=True)
 
 
+class DocArtifact(SQLModel, table=False):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+
 # TODO: Add entities and concept tables
 class Entity(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
