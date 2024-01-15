@@ -271,7 +271,7 @@ class TogetherMixtralClient:
                 self._retry_attempts += 1
                 logging.debug(f"Attempt {self._retry_attempts} to generate summary")
                 res = self.api_call(payload)
-                logging.debug(f"Response status: {res}")
+                logging.debug(f"Response status: {res['status']}")
                 answer = template.handleResponse(res)
             except Exception as e:
                 logging.error(f"Error calling API and/or handleResponse: {e}")

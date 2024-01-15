@@ -19,9 +19,8 @@ logging.basicConfig(
 )
 
 app = FastAPI()
-# dpcnaflfhdkdeijjglelioklbghepbig
 origins = [
-    "chrome-extension://dpcnaflfhdkdeijjglelioklbghepbig",
+    "chrome-extension://oeilkphkfimekfadiflbljknbhfmppej",
     "chrome-extension://*",
     "*://localhost:*",
 ]
@@ -65,11 +64,17 @@ async def create_bookmark(url: URL, background_tasks: BackgroundTasks):
             detail="The webpage doesn't have article and paragraph elements",
         )
 
-    logging.info(f"Page object created for {page.clean_url}")
-    bookmark = app_logic.create_bookmark(page)
-    logging.info(f"Bookmark created for {bookmark.url}")
-    background_tasks.add_task(generate_document, bookmark.document_id)
-    return bookmark
+    ## Check in bookmark already exists
+    bookmark = app_logic.get_bookmark_by_url(page.clean_url)
+    if bookmark is not None:
+        logging.info(f"Bookmark already exists for {page.clean_url}")
+        return bookmark
+    else:
+        logging.info(f"Page object created for {page.clean_url}")
+        bookmark = app_logic.create_bookmark(page)
+        logging.info(f"Bookmark created for {bookmark.url}")
+        background_tasks.add_task(generate_document, bookmark.document_id)
+        return bookmark
 
 
 @app.post("/document", status_code=status.HTTP_202_ACCEPTED)
@@ -121,6 +126,28 @@ async def get_bookmark_document(id: int, response: Response):
     else:
         response.status_code = status.HTTP_200_OK
         return document
+
+
+@app.get("/document_plus/{id}")
+async def get_document_plus(id: int, response: Response):
+    """get document with entities and concepts"""
+
+    logging.info(f"Icognition document plus endpoint called on {id}")
+    document = app_logic.get_document_by_id(id)
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # If document is still in processing, let the client know
+    if document.status == "Processing":
+        response.status_code = status.HTTP_206_PARTIAL_CONTENT
+        return None
+    else:
+        concepts = app_logic.get_concepts_by_document_id(id)
+        entities = app_logic.get_entities_by_document_id(id)
+
+        response.status_code = status.HTTP_200_OK
+        return {"document": document, "concepts": concepts, "entities": entities}
 
 
 @app.get("/document/{id}")
