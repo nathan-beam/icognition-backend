@@ -207,10 +207,11 @@ def extract_info_from_doc(doc: Document):
         doc.update_at = datetime.datetime.now()
         doc.status = "Done"
 
+        update_document(doc, [new_entities, new_concepts])
+
     except Exception as e:
         doc.status = "Failure"
         logging.error(f"Error generating with LLM {e}")
-    finally:
         update_document(doc)
 
 
