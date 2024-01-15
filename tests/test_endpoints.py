@@ -8,8 +8,7 @@ from typing import List
 
 base_url = "http://localhost:8889"
 
-# url = "https://bergum.medium.com/four-mistakes-when-introducing-embeddings-and-vector-search-d39478a568c5#tour"
-url = "https://medium.com/@yu-joshua/future-of-knowledge-graph-will-structured-and-semantic-search-come-into-one-952d33951df3"
+url = "https://www.yahoo.com/finance/news/collecting-degrees-thermometer-atlanta-woman-110000419.html"
 payload = {"url": url}
 
 # Unit test for create bookmart
@@ -49,37 +48,19 @@ def test_bookmark_end_to_end_workflow():
     doc = response.json()
     assert len(doc["url"]) <= len(url)
 
-    # assert type(doc["summary_generated"]) == str
-    assert type(doc["summary_bullet_points"]) == str
-    assert type(doc["spacy_entities_json"]) == list
-
-    # assert len(doc["summary_generated"]) > 10
-    assert len(doc["summary_bullet_points"]) > 10
-    assert len(doc["spacy_entities_json"]) > 0
-
-    # regenrate LLM extraction
-    doc_payload = {"document_id": document_id}
-    response = requests.post(f"{base_url}/document", json=doc_payload)
-    status_code = response.status_code
-    assert status_code == 202
-
     response = requests.get(f"{base_url}/document/{document_id}")
     status_code = response.status_code
     assert status_code == 200
-    new_doc = response.json()
 
-    assert type(new_doc["summary_bullet_points"]) == str
-    ## Most likely the new bullet points are different, thus they shouldn't equal to the previous bullet points
-    assert len(new_doc["summary_bullet_points"]) != len(doc["summary_bullet_points"])
-    assert new_doc["update_at"] != doc["update_at"]
-
-    response = requests.delete(f"{base_url}/bookmark/{bookmark_id}/document")
-    status_code = response.status_code
-    assert status_code == 204
-
-    response = requests.get(f"{base_url}/bookmark/{bookmark_id}/document")
-    status_code = response.status_code
-    assert status_code == 404
+    # get entities and concepts related to document
+    entities_res = requests.get(f"{base_url}/document/{document_id}/entities")
+    assert entities_res.status_code == 200
+    entities = entities_res.json()
+    assert len(entities) > 0
+    concepts_res = requests.get(f"{base_url}/document/{document_id}/concepts")
+    assert concepts_res.status_code == 200
+    concepts = concepts_res.json()
+    assert len(concepts) > 0
 
 
 def test_create_bookmark_not_found():

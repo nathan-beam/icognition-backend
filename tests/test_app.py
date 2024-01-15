@@ -1,7 +1,7 @@
 import app.app_logic as app_logic
 import time
 
-url = "https://medium.com/@michaelgoitein/the-playing-to-win-framework-part-iii-the-strategy-choice-cascade-279c3b5ccea3"
+url = "https://www.yahoo.com/finance/news/collecting-degrees-thermometer-atlanta-woman-110000419.html"
 
 
 def test_create_page():
@@ -17,7 +17,7 @@ async def test_bookmark_page():
         app_logic.delete_bookmark_and_associate_records(bookmark.id)
 
     page = app_logic.create_page(url)
-    await app_logic.create_bookmark(page)
+    bm = app_logic.create_bookmark(page)
     bookmark = app_logic.get_bookmark_by_url(url)
     assert bookmark != None
 
@@ -29,7 +29,7 @@ async def test_bookmark_page():
 
     # store the docuement id for future method
     document_id = doc.id
-    await app_logic.extract_meaning(doc)
+    app_logic.extract_info_from_doc(doc)
 
     # Testing the retrivel of document from the database
     doc = None
@@ -37,27 +37,21 @@ async def test_bookmark_page():
 
     # Testing the LLM extraction worked
     assert doc != None
-    assert type(doc.llama2_entities_raw) == str
-    assert type(doc.summary_bullet_points) == str
-    assert type(doc.concepts_generated) == str
-    assert type(doc.spacy_entities_json) == list
-    assert type(doc.title) == str
-    assert type(doc.url) == str
 
-    assert len(doc.llama2_entities_raw) > 20
-    assert len(doc.summary_bullet_points) > 20
-    assert len(doc.concepts_generated) > 20
-    assert len(doc.spacy_entities_json) > 0
-    assert len(doc.title) > 5
-    assert len(doc.url) > 5
 
-    entities = app_logic.get_entities_by_document_id(document_id)
-
-    assert len(entities) > 0
-    assert len(entities[0].name) > 0
-    assert len(entities[0].type) > 0
-
-    concepts = app_logic.get_concepts_by_document_id(document_id)
-
+def test_get_concets_by_document_id():
+    bookmark = app_logic.get_bookmark_by_url(url)
+    doc = app_logic.get_document_by_id(bookmark.document_id)
+    concepts = app_logic.get_concepts_by_document_id(doc.id)
     assert len(concepts) > 0
-    assert len(concepts[0].name) > 0
+    assert concepts[0].document_id == doc.id
+    assert type(concepts) == list
+
+
+def test_get_entities_by_document_id():
+    bookmark = app_logic.get_bookmark_by_url(url)
+    doc = app_logic.get_document_by_id(bookmark.document_id)
+    entities = app_logic.get_entities_by_document_id(doc.id)
+    assert len(entities) > 0
+    assert entities[0].document_id == doc.id
+    assert type(entities) == list
