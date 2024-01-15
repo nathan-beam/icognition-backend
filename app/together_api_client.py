@@ -104,7 +104,7 @@ class InclusiveTemplate(PromptTemplates):
         }} </s>
 
         <s>[INST]
-        Use the examples above to answer the following question.
+        Use the examples above to answer the following questions.
         1. Summarize the article in one sentence. Limit the answer to twenty words.
         2. Summarize the article in multiple bullet-points. Each bullet-point need to have betweeen ten to tweenty words. Limit the number of bullet points must below six.
         3. Identify ten entities (companies, people, location, products....) mentioned in the article. Include short explanation for each entity.
