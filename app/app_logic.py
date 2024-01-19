@@ -49,7 +49,7 @@ def delete_all_of_users_records(user_id: int) -> None:
     Args:
         user_id int
     """
-    bookmarks = get_bookmark_by_user_id(user_id)
+    bookmarks = get_bookmarks_by_user_id(user_id)
     for bookmark in bookmarks:
         delete_bookmark_and_associate_records(bookmark.id)
 
@@ -250,7 +250,7 @@ def create_bookmark(page: Page) -> Bookmark:
     return bookmark
 
 
-def get_bookmark_by_user_id(user_id: int) -> list[Bookmark]:
+def get_bookmarks_by_user_id(user_id: int) -> list[Bookmark]:
     session = Session(engine)
     bookmarks = session.scalars(
         select(Bookmark).where(Bookmark.user_id == user_id)

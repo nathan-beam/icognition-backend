@@ -100,6 +100,17 @@ async def generate_document(document_id):
         app_logic.extract_info_from_doc(doc)
 
 
+@app.get("/bookmark/user/{user_id}", response_model=List[Bookmark], status_code=200)
+async def get_bookmarks_by_user_id(user_id: int = 777):
+    bookmarks = app_logic.get_bookmarks_by_user_id(user_id)
+
+    if bookmarks is None:
+        raise HTTPException(status_code=404, detail="Bookmarks not found")
+
+    logging.info(f"Icognition return {len(bookmarks)} bookmarks")
+    return bookmarks
+
+
 @app.get("/bookmark", response_model=Bookmark, status_code=200)
 async def get_bookmark_by_url(url: str):
     bookmark = app_logic.get_bookmark_by_url(url)

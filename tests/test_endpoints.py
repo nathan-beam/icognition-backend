@@ -80,6 +80,13 @@ def test_get_bookmark_not_found():
     assert status_code == 404
 
 
+def test_get_bookmarks_per_user():
+    response = requests.get(f"{base_url}/bookmark/user/777")
+    assert response.status_code == 200
+    bookmarks = response.json()
+    assert len(bookmarks) > 0
+
+
 def xtest_get_document():
     response = requests.post(f"{base_url}/bookmark", json=payload)
     id = response.json()["document_id"]
