@@ -1,0 +1,9 @@
+ipykernel
+ipython
+ipywidgets
+pytest
+requests
+spacy
+fastapi
+pydantic
+sqlalchemy

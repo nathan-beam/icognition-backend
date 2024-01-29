@@ -16,7 +16,7 @@ This Alembic migration was created following the example in https://testdriven.i
   -- from app.models import WD_Item, WD_Alias, Document, Bookmark, Keyphrase
   -- target_metadata = SQLModel.metadata
 - alembic.ini
-  sqlalchemy.url = postgresql+psycopg2://app:2214@localhost/icog_db
+  sqlalchemy.url = postgresql+pg8000://app:2214@localhost/icog_db
 
 3. Generation of the migration script `alembic revision --autogenerate -m "init"`
 4. Apply change to the database `alembic upgrade head`
