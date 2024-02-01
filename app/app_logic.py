@@ -18,7 +18,7 @@ logging.basicConfig(
 
 config = dotenv_values(".env")
 
-engine = create_engine(config["LOCAL_PSQL"])
+engine = create_engine(config["LOCAL_PSQL"], client_encoding="utf8")
 
 mixtralClient = TogetherMixtralClient()
 inclusiveTemplate = InclusiveTemplate()
@@ -224,7 +224,7 @@ def create_bookmark(page: Page) -> Bookmark:
 
     bookmark = session.scalar(
         select(Bookmark).where(
-            and_(Bookmark.url == page.clean_url, Bookmark.user_id == user_id)
+            and_(Bookmark.url == page.clean_url, Bookmark.user_id == int(user_id))
         )
     )
 

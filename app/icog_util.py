@@ -4,7 +4,7 @@ import string
 import numpy as np
 import math
 
-from stop_words import get_stop_words as stopwords
+from stop_words import get_stop_words
 from nltk.tokenize import word_tokenize
 from transformers import AutoTokenizer
 from typing import Any, Dict, List, Union
@@ -23,7 +23,7 @@ logging.basicConfig(
 )
 
 translator = str.maketrans("", "", string.punctuation)
-stop_words = get_stop_words("en")
+stopwords = get_stop_words("en")
 
 
 def remove_stop_words(string, return_format="String"):
