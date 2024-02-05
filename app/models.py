@@ -32,7 +32,7 @@ class Bookmark(SQLModel, table=True):
 
 
 class Document(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int = Field(default=None, primary_key=True)
     title: str = Field(default=None)
     url: str = Field(default=None)
     original_text: str = Field(default=None, nullable=True)
