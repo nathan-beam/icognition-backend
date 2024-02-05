@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from app.models import Bookmark, Document, DocRequest, URL
+from app.models import Bookmark, Document, PagePayload, DocumentPlus
 import logging
 import sys
 import uvicorn
@@ -48,17 +48,17 @@ async def validation_exception_handler(request, exc):
 
 
 @app.post("/bookmark", response_model=Bookmark, status_code=201)
-async def create_bookmark(url: URL, background_tasks: BackgroundTasks):
+async def create_bookmark(payload: PagePayload, background_tasks: BackgroundTasks):
     """file_name = f'../data/icog_pages/{page.clean_url}.json'
     with open(file_name, "w") as fp:
         json.dump(page.dict(), fp)
     """
-    logging.info(f"Icognition bookmark endpoint called on {url.url}")
+    logging.info(f"Icognition bookmark endpoint called on {payload.url}")
 
-    page = app_logic.create_page(url.url)
+    page = app_logic.create_page(payload)
 
     if page is None:
-        logging.warn(f"Page object not created for {url.url}")
+        logging.warn(f"Page object not created for {payload.url}")
         raise HTTPException(
             status_code=204,
             detail="The webpage doesn't have article and paragraph elements",
@@ -77,18 +77,19 @@ async def create_bookmark(url: URL, background_tasks: BackgroundTasks):
         return bookmark
 
 
-@app.post("/document", status_code=status.HTTP_202_ACCEPTED)
-async def regenerate_document(req: DocRequest, background_tasks: BackgroundTasks):
+@app.post("/document", response_model=Document, status_code=status.HTTP_202_ACCEPTED)
+async def regenerate_document(doc: Document, background_tasks: BackgroundTasks):
     """
     This method create document using a bookmark id and a URL.
     Because create_bookmark also generate document, this method is use to re-generate
     the a document. Because it can take time to generate a document, this method
     kickoff the generate and return 202
     """
-    logging.info(f"Regenrate Document ID {req.document_id} and url {req.url}")
+    logging.info(f"Regenrate Document ID {doc.id}")
 
     # Generate LLM content in a background process
-    background_tasks.add_task(generate_document, req.document_id)
+    background_tasks.add_task(generate_document, doc.id)
+    return doc
 
 
 ## Background task to generate summaries from LLM if not already exists
@@ -153,12 +154,15 @@ async def get_document_plus(id: int, response: Response):
     if document.status == "Processing":
         response.status_code = status.HTTP_206_PARTIAL_CONTENT
         return None
-    else:
+    elif document.status == "Done":
         concepts = app_logic.get_concepts_by_document_id(id)
         entities = app_logic.get_entities_by_document_id(id)
 
         response.status_code = status.HTTP_200_OK
-        return {"document": document, "concepts": concepts, "entities": entities}
+        return DocumentPlus(document=document, concepts=concepts, entities=entities)
+    else:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"document": document}
 
 
 @app.get("/document/{id}")
@@ -208,6 +212,12 @@ async def get_entities(id: int, response: Response):
 async def delete_bookmark(id: int) -> None:
     logging.info(f"Delete bookmark and associated records for id: {id}")
     app_logic.delete_bookmark_and_associate_records(id)
+
+
+@app.delete("/document/{id}", status_code=204)
+async def delete_document(id: int) -> None:
+    logging.info(f"Delete document and associated records for id: {id}")
+    app_logic.delete_document_and_associate_records(id)
 
 
 if __name__ == "__main__":

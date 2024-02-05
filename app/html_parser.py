@@ -2,7 +2,7 @@ import requests
 import logging
 import re
 from bs4 import BeautifulSoup
-from app.models import Page
+from app.models import Page, PagePayload
 import urllib.parse as urlparse
 
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 MININUM_PARAGRAPH_LENGTH = 10
 
 
-def get_webpage(url: str) -> BeautifulSoup:
+def get_webpage(payload: PagePayload) -> BeautifulSoup:
     """_summary_
 
     Args:
@@ -27,10 +27,15 @@ def get_webpage(url: str) -> BeautifulSoup:
         BeautifulSoup: BeatifulSoup object
     """
     try:
-        response = requests.get(url)
+
+        if payload.html:
+            logging.info("Html_parser -> get_webpage -> Using payload html")
+            return BeautifulSoup(payload.html, "html.parser")
+
+        logging.info("Html_parser -> get_webpage -> requests.get -> payload.url")
+        response = requests.get(payload.url)
         content = response.text
-        soup = BeautifulSoup(content, "html.parser")
-        return soup
+        return BeautifulSoup(content, "html.parser")
     except Exception as e:
         logging.error(f"Error getting webpage: {url} with error: {e}")
         return None
@@ -115,9 +120,9 @@ def clean_url(url: str) -> str:
     return clean_url
 
 
-def create_page(url) -> Page:
-    url = clean_url(url)
-    html = get_webpage(url)
+def create_page(payload: PagePayload) -> Page:
+
+    html = get_webpage(payload)
     if html is None:
         logging.error("No webpage found")
         return None
@@ -132,7 +137,7 @@ def create_page(url) -> Page:
     author = extract_author_medium(html)
 
     page = Page()
-    page.clean_url = url
+    page.clean_url = clean_url(payload.url)
     page.paragraphs = paragraphs
     page.author = author
     page.full_text = "\n".join(paragraphs)

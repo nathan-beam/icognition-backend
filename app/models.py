@@ -6,14 +6,9 @@ from typing import Optional, List, Dict
 from datetime import datetime
 
 
-class URL(SQLModel, table=False):
+class PagePayload(SQLModel, table=False):
     url: Optional[str] = Field(default=None)
-
-
-class DocRequest(SQLModel, table=False):
-    url: Optional[str] = Field(default=None, nullable=True)
-    bookmark_id: Optional[int] = Field(default=None, nullable=True)
-    document_id: Optional[int] = Field(default=None, nullable=True)
+    html: Optional[str] = Field(default=None)
 
 
 class HTTPError(SQLModel, table=False):
@@ -78,3 +73,9 @@ class Concept(SQLModel, table=True):
         sa_column=Column(Vector(384)), default=None
     )
     source: str = Field(default=None)
+
+
+class DocumentPlus(SQLModel, table=False):
+    document: Document
+    concepts: Optional[List[Concept]]
+    entities: Optional[List[Entity]]

@@ -2,7 +2,7 @@ import datetime
 import sys
 import logging
 from app import html_parser
-from app.models import Bookmark, Entity, Concept, Page, Document
+from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
 from app.together_api_client import InclusiveTemplate, TogetherMixtralClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
@@ -37,10 +37,22 @@ def delete_bookmark_and_associate_records(bookmark_id) -> None:
         session.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
         session.execute(delete(Entity).where(Entity.document_id == doc.id))
         session.execute(delete(Concept).where(Concept.document_id == doc.id))
-        session.execute(delete(Entity).where(Entity.document_id == doc.id))
-        session.execute(delete(Concept).where(Concept.document_id == doc.id))
         session.commit()
         logging.info(f"Bookmark {bookmark_id} and associated records deleted")
+
+
+def delete_document_and_associate_records(document_id) -> None:
+    """
+    This function deletes a document and all associated records from the database.
+    This function was create for testing purposes.
+    """
+    logging.info(f"Deleting document {document_id} and associated records")
+    with Session(engine) as session:
+        session.execute(delete(Document).where(Document.id == document_id))
+        session.execute(delete(Entity).where(Entity.document_id == document_id))
+        session.execute(delete(Concept).where(Concept.document_id == document_id))
+        session.commit()
+        logging.info(f"Document {document_id} and associated records deleted")
 
 
 def delete_all_of_users_records(user_id: int) -> None:
@@ -104,10 +116,10 @@ def get_concepts_by_document_id(document_id) -> Concept:
     return concepts
 
 
-def create_page(url: str) -> Page:
-    page = html_parser.create_page(url)
+def create_page(payload: PagePayload) -> Page:
+    page = html_parser.create_page(payload)
     if page == None:
-        logging.info(f"Page not found for url {url}")
+        logging.info(f"Page not found for url {payload.url}")
         return None
 
     return page
@@ -159,16 +171,17 @@ def extract_info_from_doc(doc: Document):
     try:
         logging.info(f"Generating summary for document {doc.id}")
         response = mixtralClient.generate(doc.original_text, inclusiveTemplate)
+        logging.info(f"Response from LLM {response}")
         summary_obj = inclusiveTemplate.handleResponse(response)
+        logging.info(f"Summary object {summary_obj}")
 
-        ## TODO: Add summary and bullet points to document
         one_line_summary = summary_obj["oneSentenceSummary"]
         bullet_points = summary_obj["summaryInNumericBulletPoints"]
         entities = summary_obj["entities"]
         concepts = summary_obj["concepts_ideas"]
     except Exception as e:
         logging.error(f"Error generating with LLM {e}")
-        doc.status = f"Failure in generating summary: {e}"
+        doc.status = "Failure"
         update_document(doc)
         return
 
