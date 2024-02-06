@@ -36,8 +36,13 @@ def get_webpage(payload: PagePayload) -> BeautifulSoup:
         response = requests.get(payload.url)
         content = response.text
         return BeautifulSoup(content, "html.parser")
+    except requests.exceptions.InvalidSchema as e:
+        logging.error(
+            f"InvalidSchema wrror getting webpage: {payload.url} with error: {e}"
+        )
+        return None
     except Exception as e:
-        logging.error(f"Error getting webpage: {url} with error: {e}")
+        logging.error(f"Error getting webpage: {payload.url} with error: {e}")
         return None
 
 
