@@ -188,7 +188,7 @@ class TogetherMixtralClient:
     """
 
     def __init__(self) -> None:
-        self._api_token = config["TOGETHER_TOEKN"]
+        self._api_token = config["TOGETHER_TOKEN"]
         self._options = {"use_cache": True}
         self._api_url = "https://api.together.xyz/inference"
         self._model_name = "mistralai/Mixtral-8x7B-Instruct-v0.1"
