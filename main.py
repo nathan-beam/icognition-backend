@@ -35,9 +35,9 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-async def root():
-    return {"Message": "Welcome to the Summarizer Service"}
+@app.get("/ping", status_code=200)
+async def ping():
+    return {"Message": "Service is up and running"}
 
 
 @app.exception_handler(RequestValidationError)
