@@ -1,9 +1,10 @@
-from pgvector.sqlalchemy import Vector
 from sqlmodel import SQLModel, Field, ARRAY, Float, JSON
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import TEXT
 from typing import Optional, List, Dict
 from datetime import datetime
+
+### This is the code that will be used in the models.py file
 
 
 class PagePayload(SQLModel, table=False):
@@ -55,9 +56,6 @@ class Entity(SQLModel, table=True):
     document_id: Optional[int] = Field(default=None)
     name: str = Field(default=None)
     description: str = Field(default=None)
-    name_description_vec: List[float] = Field(
-        sa_column=Column(Vector(384)), default=None
-    )
     source: str = Field(default=None)
     type: str = Field(default=None)
     wikidata_id: str = Field(default=None)
@@ -69,9 +67,6 @@ class Concept(SQLModel, table=True):
     document_id: Optional[int] = Field(default=None)
     name: str = Field(default=None)
     description: str = Field(default=None)
-    name_description_vec: List[float] = Field(
-        sa_column=Column(Vector(384)), default=None
-    )
     source: str = Field(default=None)
 
 
