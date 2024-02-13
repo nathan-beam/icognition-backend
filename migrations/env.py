@@ -4,7 +4,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from sqlmodel import SQLModel
-from pgvector.sqlalchemy import Vector
+
+# from pgvector.sqlalchemy import Vector
 from dotenv import dotenv_values
 
 from alembic import context
