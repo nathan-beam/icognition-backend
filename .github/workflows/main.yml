@@ -3,7 +3,7 @@ name: CI/CD Pipeline for FastAPI Application
 on:
   push:
     branches:
-      - main  # Assuming 'main' is your production branch
+      - light_tests  # Assuming 'main' is your production branch
 
 jobs:
   deploy:
