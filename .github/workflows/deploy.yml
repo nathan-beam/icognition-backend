@@ -51,7 +51,7 @@ jobs:
 
       - name: Deploy to Google App Engine
         run: gcloud app deploy app.yaml --quiet
-        working-directory: ./app
+        # working-directory: .
 
       - name: Run Alembic migrations
         run: alembic upgrade head
