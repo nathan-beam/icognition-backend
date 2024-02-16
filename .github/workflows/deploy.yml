@@ -50,7 +50,7 @@ jobs:
       #     GCLOUD_PROJECT: strange-tome-412113
 
       - name: Deploy to Google App Engine
-        run: gcloud app deploy app.yaml --quiet
+        run: gcloud app deploy app.yml --quiet
         # working-directory: .
 
       - name: Run Alembic migrations
