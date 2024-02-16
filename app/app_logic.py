@@ -18,7 +18,7 @@ logging.basicConfig(
 
 config = dotenv_values(".env")
 
-engine = create_engine(config["LOCAL_PSQL"], client_encoding="utf8")
+engine = create_engine(config["DATABASE_URL"], client_encoding="utf8")
 
 mixtralClient = TogetherMixtralClient()
 inclusiveTemplate = InclusiveTemplate()
