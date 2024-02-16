@@ -54,6 +54,7 @@ jobs:
         # working-directory: .
 
       - name: Run Alembic migrations
+        uses: er5bus/alembic-python-action@v1
         run: alembic upgrade head
         env:
-          DATABASE_URL: ${{ env.DEV_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
