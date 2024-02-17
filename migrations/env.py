@@ -1,19 +1,14 @@
 import os
-from dotenv import load_dotenv
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from sqlmodel import SQLModel
 
-# from pgvector.sqlalchemy import Vector
-from dotenv import dotenv_values
-
 from alembic import context
 
 from app.models import Bookmark, Document, Entity
 
-dotenv_config = dotenv_values(".env")
-connection_string = dotenv_config["DATABASE_URL"]
+connection_string = os.getenv("DATABASE_URL")
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
