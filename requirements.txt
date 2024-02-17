@@ -63,7 +63,6 @@ pydantic_core==2.14.6
 Pygments==2.17.2
 pytest==8.0.0
 python-dateutil==2.8.2
-python-dotenv==1.0.1
 PyYAML==6.0.1
 pyzmq==25.1.2
 regex==2023.12.25

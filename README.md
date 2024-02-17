@@ -7,6 +7,7 @@ The backend application for icognition
 3. Install dependencies `pip install -r requirements.txt`
 
 # Run
+* Add env variables to session export $(cat .env | xargs) && env
 * Terminal: `uvicorn main:app --reload --port 8889`
 * VS Code press F5 on Windows 
 

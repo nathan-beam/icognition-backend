@@ -37,11 +37,11 @@ class Document(SQLModel, table=True):
     title: str = Field(default=None)
     url: str = Field(default=None)
     original_text: str = Field(default=None, nullable=True)
-    authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=None)
-    short_summary: str = Field(default=None)
+    authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=[])
+    short_summary: str = Field(default=None, nullable=True)
     summary_bullet_points: str = Field(default=[], sa_column=Column(JSON))
-    raw_answer: str = Field(default=None)
-    publication_date: datetime = Field(default=None)
+    raw_answer: str = Field(default=None, nullable=True)
+    publication_date: datetime = Field(default=None, nullable=True)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
     status: str = Field(default="Pending", nullable=True)
 
@@ -55,19 +55,19 @@ class Entity(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     document_id: Optional[int] = Field(default=None)
     name: str = Field(default=None)
-    description: str = Field(default=None)
-    source: str = Field(default=None)
-    type: str = Field(default=None)
-    wikidata_id: str = Field(default=None)
-    score: Optional[float] = Field(default=None)
+    description: str = Field(default=None, nullable=True)
+    source: str = Field(default=None, nullable=True)
+    type: str = Field(default=None, nullable=True)
+    wikidata_id: str = Field(default=None, nullable=True)
+    score: Optional[float] = Field(default=None, nullable=True)
 
 
 class Concept(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     document_id: Optional[int] = Field(default=None)
     name: str = Field(default=None)
-    description: str = Field(default=None)
-    source: str = Field(default=None)
+    description: str = Field(default=None, nullable=True)
+    source: str = Field(default=None, nullable=True)
 
 
 class DocumentPlus(SQLModel, table=False):

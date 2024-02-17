@@ -1,12 +1,12 @@
 import datetime
 import sys
 import logging
+import os
 from app import html_parser
 from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
 from app.together_api_client import InclusiveTemplate, TogetherMixtralClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
-from dotenv import dotenv_values
 
 
 logging.basicConfig(
@@ -16,7 +16,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-config = dotenv_values(".env")
+config = os.environ
 
 engine = create_engine(config["DATABASE_URL"], client_encoding="utf8")
 
