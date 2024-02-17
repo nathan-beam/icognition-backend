@@ -2,7 +2,7 @@ import requests
 import logging
 import sys
 import json
-from dotenv import dotenv_values
+import os
 
 
 logging.basicConfig(
@@ -12,7 +12,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-config = dotenv_values(".env")
+config = os.environ
 
 
 class NerClient:

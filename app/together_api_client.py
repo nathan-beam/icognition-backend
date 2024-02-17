@@ -7,7 +7,6 @@ import re
 import json
 from time import sleep
 from transformers import AutoTokenizer
-from dotenv import dotenv_values
 from app.icog_util import truncate_text
 
 
@@ -18,7 +17,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-config = dotenv_values(".env")
+config = os.environ
 
 
 class PromptTemplates:
