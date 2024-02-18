@@ -53,6 +53,13 @@ jobs:
         run: gcloud app deploy app.yml --quiet
         # working-directory: .
 
+      
+      - name: Set up GCP SQL Proxy
+        usus: mattes/gce-cloudsql-proxy-action@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SQL_DEV_KEY }}
+          instances: strange-tome-412113:us-east1:app-engine-psql
+      
       - name: Run Alembic migrations
         run: alembic upgrade head
         env:
