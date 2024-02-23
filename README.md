@@ -1,24 +1,14 @@
 # icognition-backend
 The backend application for icognition
 
-
-# Installation - Databases
-1. `cd docker-database`
-2. `docker-compose up -d`
-
 # Running with Docker
-1. From project root
-2. Run the docker compose: `docker-compose up --build` 
+1. Build icogapi image using `docker build -t icogapi:v1 .`
+1. Spin-up containers `docker-compose up -d` 
 
 # Local Development
 1. Create conda environment `conda create -n {NAME} python=3.12`
 2. Install dependencies `pip install -r requirements.txt`
-
-
-# Run
-* Add env variables to session export $(cat .env | xargs) && env
-* Terminal: `uvicorn main:app --reload --port 8889`
-* VS Code press F5 on Windows 
+3. To run from vs code use launch.json. Ask for Eliran to share. 
 
 # GCP Proxy Connection (not needed if using docker-databases)
 * Command ./cloud-sql-proxy --port 3306 {connection_name}

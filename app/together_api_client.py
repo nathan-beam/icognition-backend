@@ -191,7 +191,9 @@ class TogetherMixtralClient:
         self._options = {"use_cache": True}
         self._api_url = "https://api.together.xyz/inference"
         self._model_name = "mistralai/Mixtral-8x7B-Instruct-v0.1"
-        self._tokenizer = AutoTokenizer.from_pretrained(self._model_name)
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self._model_name, use_fast=True, use_cache=False
+        )
         self._max_length = 32000
         self._retry_sleep = 30
         self._retry_attempts = 0

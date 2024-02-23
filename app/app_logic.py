@@ -24,6 +24,15 @@ mixtralClient = TogetherMixtralClient()
 inclusiveTemplate = InclusiveTemplate()
 
 
+def test_db_connection():
+    logging.info(
+        f"Testing database connection. Connection string: {config['DATABASE_URL']}"
+    )
+    with Session(engine) as session:
+        bm = session.scalar(select(Bookmark).limit(1))
+    return bm
+
+
 def delete_bookmark_and_associate_records(bookmark_id) -> None:
     """
     This function deletes a bookmark and all associated records from the database.

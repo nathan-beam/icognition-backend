@@ -28,8 +28,6 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    # allow_origin_regex="*",  # "chrome-extension://*",  # for development
-    # allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -37,6 +35,11 @@ app.add_middleware(
 
 @app.get("/ping", status_code=200)
 async def ping():
+    bm = app_logic.test_db_connection()
+
+    if bm is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
     return {"Message": "Service is up and running"}
 
 
