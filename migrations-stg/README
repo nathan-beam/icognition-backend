@@ -1,0 +1,36 @@
+# Alembic Migration
+
+This Alembic migration was created following the example in https://testdriven.io/blog/fastapi-sqlmodel/ with excluding the async steps.
+
+## Iniation Steps
+
+1. Initiate the migration configuration - `alembic init migrations`
+2. Edits:
+
+- In script.py.mako added:
+  -- import sqlmodel
+  -- import pgvector
+- In env.py added:
+  -- from sqlmodel import SQLModel
+  -- from pgvector import Vectors
+  -- from app.models import WD_Item, WD_Alias, Document, Bookmark, Keyphrase
+  -- target_metadata = SQLModel.metadata
+- alembic.ini
+ 
+
+3. Generation of the migration script (from project home) `alembic -c migrations-stg/alembic.ini revision --autogenerate -m "init"`
+4. Apply change to the database `alembic -c migrations-stg/alembic.ini upgrade head`
+
+## Apply new changes
+
+0. Make sure environment variable are in session. Loading env variable from .env in local. Ths mostly use for testing 
+* export $(cat .env | xargs) && env
+* This migration depend on the STG_DATABASE_URL that is used in env.py
+
+1. Make sure proxy is running
+* path '/home/eboraks/Projects/gcp-sql-proxy'
+* Command ./cloud-sql-proxy --port 3306 {connection_name_from_gcp_console}
+
+2. Make changes to models.py file
+3. Run `alembic -c migrations-stg/alembic.ini revision --autogenerate -m "{MESSAGE}"`
+4. Apply changes `alembic -c migrations-stg/alembic.ini upgrade head`

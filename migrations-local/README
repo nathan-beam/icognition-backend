@@ -18,11 +18,11 @@ This Alembic migration was created following the example in https://testdriven.i
 - alembic.ini
   sqlalchemy.url = postgresql+pg8000://app:2214@localhost/icog_db
 
-3. Generation of the migration script `alembic revision --autogenerate -m "init"`
-4. Apply change to the database `alembic upgrade head`
+3. Generation of the migration script `alembic -c migrations-local/alembic.ini revision --autogenerate -m "init"`
+4. Apply change to the database `alembic -c migrations-local/alembic.ini upgrade head`
 
 ## Apply new changes
 
 1. Make changes to models.py file
-2. Run `alembic revision --autogenerate -m "{MESSAGE}"`
-3. Apply changes `alembic upgrade head`
+2. Run `alembic -c migrations-local/alembic.ini revision --autogenerate -m "{MESSAGE}"`
+3. Apply changes `alembic -c migrations-local/alembic.ini upgrade head`
