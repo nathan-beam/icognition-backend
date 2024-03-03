@@ -15,4 +15,5 @@ The backend application for icognition
 * path '/home/eboraks/Projects/gcp-sql-proxy'
 * Connect to DB: psql -h 127.0.0.1 -p 3306 -d test-db-eliran -U icog-db-user 
 
-
+# Load env variable from .env in local. Ths mostly use for testing 
+* export $(cat .env | xargs) && env
