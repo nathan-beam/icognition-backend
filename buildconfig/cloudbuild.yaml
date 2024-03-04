@@ -1,0 +1,36 @@
+steps:
+- id: "Build Docker Image"
+  name: 'gcr.io/cloud-builders/docker:latest'
+  dir: 'icognition-api'
+  args: ['build', 
+          '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img:latest',
+          '.']
+
+- id: "Push Docker Image To Artifact Registry"
+  name: 'gcr.io/cloud-builders/docker:latest'
+  args: ['push', '--all-tags', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img:latest']
+
+- id: "Deploy Cloud Run Service"
+  name: 'gcr.io/cloud-builders/gcloud:latest'
+  args: [
+    'alpha', 'run', 'deploy', 'icognition-api', 
+    '--service-account' ,'sa-icognition-api-svc@${PROJECT_ID}.iam.gserviceaccount.com',
+    '--allow-unauthenticated',
+    '--memory', '512Mi',
+    '--platform', 'managed',
+    '--image', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img:latest',
+    '--timeout', '30',
+    '--min-instances', '0',
+    '--max-instances', '1',
+    '--ingress', 'all',
+    '--region', 'us-central1',
+    '--set-secrets', 'DATABASE_URL=db-url:latest',
+    '--network' ,'default',
+    '--subnet', 'default',
+    '--vpc-egress', 'private-ranges-only'
+    ]
+timeout: 600s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  dynamic_substitutions: true
+  
