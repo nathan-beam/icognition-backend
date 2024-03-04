@@ -1,7 +1,7 @@
 steps:
 - id: "Build Docker Image"
   name: 'gcr.io/cloud-builders/docker:latest'
-  dir: 'icognition-api'
+  dir: '.'
   args: ['build', 
           '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img:latest',
           '.']
@@ -13,7 +13,7 @@ steps:
 - id: "Deploy Cloud Run Service"
   name: 'gcr.io/cloud-builders/gcloud:latest'
   args: [
-    'alpha', 'run', 'deploy', 'icognition-api', 
+    'alpha', 'run', 'deploy', 'icognition-api-scv', 
     '--service-account' ,'sa-icognition-api-svc@${PROJECT_ID}.iam.gserviceaccount.com',
     '--allow-unauthenticated',
     '--memory', '512Mi',
@@ -24,7 +24,7 @@ steps:
     '--max-instances', '1',
     '--ingress', 'all',
     '--region', 'us-central1',
-    '--set-secrets', 'DATABASE_URL=db-url:latest',
+    '--set-secrets', 'DATABASE_URL=icog-db-stg-secret:latest',
     '--network' ,'default',
     '--subnet', 'default',
     '--vpc-egress', 'private-ranges-only'
