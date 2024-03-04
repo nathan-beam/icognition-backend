@@ -3,12 +3,12 @@ steps:
   name: 'gcr.io/cloud-builders/docker:latest'
   dir: '.'
   args: ['build', 
-          '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img:latest',
+          '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img',
           '.']
 
 - id: "Push Docker Image To Artifact Registry"
   name: 'gcr.io/cloud-builders/docker:latest'
-  args: ['push', '--all-tags', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img:latest']
+  args: ['push', '--all-tags', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img']
 
 - id: "Deploy Cloud Run Service"
   name: 'gcr.io/cloud-builders/gcloud:latest'
@@ -18,7 +18,7 @@ steps:
     '--allow-unauthenticated',
     '--memory', '512Mi',
     '--platform', 'managed',
-    '--image', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img:latest',
+    '--image', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img',
     '--timeout', '30',
     '--min-instances', '0',
     '--max-instances', '1',
