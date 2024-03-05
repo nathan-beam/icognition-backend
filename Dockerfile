@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the app to the container
 COPY ./app ./app
 
-
+ENV HOST 0.0.0.0
 EXPOSE 8080
 # command: uvicorn app.main:app --host 0.0.0.0 --port "8889"
 # Run the app
