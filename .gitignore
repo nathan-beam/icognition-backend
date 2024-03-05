@@ -1,9 +1,6 @@
 # iCognition data
 data/
 
-# Database stuff
-versions/
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -221,7 +221,3 @@ async def delete_bookmark(id: int) -> None:
 async def delete_document(id: int) -> None:
     logging.info(f"Delete document and associated records for id: {id}")
     app_logic.delete_document_and_associate_records(id)
-
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8889)
