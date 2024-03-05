@@ -13,7 +13,7 @@ steps:
 - id: "Deploy Cloud Run Service"
   name: 'gcr.io/cloud-builders/gcloud:latest'
   args: [
-    'alpha', 'run', 'deploy', 'icognition-api-scv', 
+    'run', 'deploy', 'icognition-api-scv', 
     '--service-account' ,'sa-icognition-api-svc@${PROJECT_ID}.iam.gserviceaccount.com',
     '--allow-unauthenticated',
     '--memory', '512Mi',
