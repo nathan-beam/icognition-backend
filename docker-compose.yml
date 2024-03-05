@@ -27,8 +27,8 @@ services:
     image: icogapi:latest
     env_file: .env
     environment:
-      PORT: 8889
+      PORT: 8080
     volumes:
       - .:/app
     ports:
-      - 8889:8889
+      - 8080:8080

@@ -19,6 +19,7 @@ steps:
     '--memory', '512Mi',
     '--platform', 'managed',
     '--image', 'us-central1-docker.pkg.dev/${PROJECT_ID}/icognition-api-artifact-registry/icognition-api-img',
+    '--port', '8080',
     '--timeout', '30',
     '--min-instances', '0',
     '--max-instances', '1',
