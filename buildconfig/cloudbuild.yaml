@@ -26,7 +26,6 @@ steps:
     '--ingress', 'all',
     '--region', 'us-central1',
     '--set-secrets', 'DATABASE_URL=icog-db-stg-secret:latest',
-    '--ingress, 'all',
     '--vpc-egress', 'private-ranges-only'
     ]
 timeout: 600s
