@@ -25,7 +25,9 @@ steps:
     '--max-instances', '1',
     '--ingress', 'all',
     '--region', 'us-central1',
+    '--set-env-vars', 'DUMMY_USER=777',
     '--set-secrets', 'DATABASE_URL=icog-db-stg-secret:latest',
+    '--set-secrets', 'TOGETHER_TOKEN=together-token-secret:latest',
     '--vpc-egress', 'private-ranges-only'
     ]
 timeout: 600s
