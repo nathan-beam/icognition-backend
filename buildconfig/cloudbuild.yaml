@@ -13,7 +13,7 @@ steps:
 - id: "Deploy Cloud Run Service"
   name: 'gcr.io/cloud-builders/gcloud:latest'
   args: [
-    'alpha', 'run', 'deploy', 'icognition-api-scv', 
+    'run', 'deploy', 'icognition-api-scv', 
     '--service-account' ,'sa-icognition-api-svc@${PROJECT_ID}.iam.gserviceaccount.com',
     '--allow-unauthenticated',
     '--memory', '512Mi',
@@ -26,8 +26,7 @@ steps:
     '--ingress', 'all',
     '--region', 'us-central1',
     '--set-secrets', 'DATABASE_URL=icog-db-stg-secret:latest',
-    '--network' ,'default',
-    '--subnet', 'default',
+    '--ingress, 'all',
     '--vpc-egress', 'private-ranges-only'
     ]
 timeout: 600s
