@@ -1,8 +1,8 @@
 """init
 
-Revision ID: d621cd963759
+Revision ID: 704d8e72895f
 Revises: 
-Create Date: 2024-03-01 18:31:36.905909
+Create Date: 2024-03-07 09:09:04.960594
 
 """
 from typing import Sequence, Union
@@ -15,7 +15,7 @@ from pgvector.sqlalchemy import Vector
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd621cd963759'
+revision: str = '704d8e72895f'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

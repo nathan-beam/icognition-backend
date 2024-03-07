@@ -12,6 +12,8 @@ logging.basicConfig(
 
 
 def connect_unix_socket() -> sqlalchemy.engine.base.Engine:
+
+    logging.info(f"Connecting to database using Unix socket")
     """Initializes a Unix socket connection pool for a Cloud SQL instance of Postgres."""
     db_user = os.environ["DB_USER"]
     db_pass = os.environ["DB_PASSWORD"]
@@ -34,10 +36,13 @@ def connect_unix_socket() -> sqlalchemy.engine.base.Engine:
         ),
         client_encoding="utf8",
     )
+    logging.info(f"Connected to database using Unix socket")
     return pool
 
 
 def connect() -> sqlalchemy.engine.base.Engine:
+
+    logging.info(f"Connecting to database using TCP")
     """Initializes a Unix socket connection pool for a Cloud SQL instance of Postgres."""
     db_user = os.environ["DB_USER"]
     db_pass = os.environ["DB_PASSWORD"]
@@ -54,6 +59,7 @@ def connect() -> sqlalchemy.engine.base.Engine:
         ),
         client_encoding="utf8",
     )
+    logging.info(f"Connected to database using TCP")
     return pool
 
 
