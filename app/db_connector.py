@@ -1,0 +1,65 @@
+import os, sys
+import logging
+import sqlalchemy
+
+
+logging.basicConfig(
+    stream=sys.stdout,
+    format="%(asctime)s - %(message)s",
+    level=logging.DEBUG,
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+
+def connect_unix_socket() -> sqlalchemy.engine.base.Engine:
+    """Initializes a Unix socket connection pool for a Cloud SQL instance of Postgres."""
+    db_user = os.environ["DB_USER"]
+    db_pass = os.environ["DB_PASSWORD"]
+    db_name = os.environ["DB_NAME"]
+    instance_connection_name = os.environ[
+        "INSTANCE_CONNECTION_NAME"
+    ]  # e.g. '/cloudsql/project:region:instance'
+
+    pool = sqlalchemy.create_engine(
+        # Equivalent URL:
+        # postgresql+pg8000://<db_user>:<db_pass>@/<db_name>
+        #                         ?unix_sock=<INSTANCE_UNIX_SOCKET>/.s.PGSQL.5432
+        # Note: Some drivers require the `unix_sock` query parameter to use a different key.
+        sqlalchemy.engine.url.URL.create(
+            drivername="postgresql+pg8000",
+            username=db_user,
+            password=db_pass,
+            database=db_name,
+            query={"unix_sock": f"/cloudsql/{instance_connection_name}/.s.PGSQL.5432"},
+        ),
+        client_encoding="utf8",
+    )
+    return pool
+
+
+def connect() -> sqlalchemy.engine.base.Engine:
+    """Initializes a Unix socket connection pool for a Cloud SQL instance of Postgres."""
+    db_user = os.environ["DB_USER"]
+    db_pass = os.environ["DB_PASSWORD"]
+    db_name = os.environ["DB_NAME"]
+
+    pool = sqlalchemy.create_engine(
+        # Equivalent URL:
+        # postgresql+pg8000://<db_user>:<db_pass>@/<db_name>
+        sqlalchemy.engine.url.URL.create(
+            drivername="postgresql+pg8000",
+            username=db_user,
+            password=db_pass,
+            database=db_name,
+        ),
+        client_encoding="utf8",
+    )
+    return pool
+
+
+def get_connection():
+    return (
+        connect_unix_socket()
+        if os.environ.get("INSTANCE_CONNECTION_NAME")
+        else connect()
+    )
