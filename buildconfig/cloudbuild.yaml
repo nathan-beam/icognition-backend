@@ -32,7 +32,7 @@ steps:
     '--set-secrets', 'DB_NAME=central-db-icog-name:latest',
     '--set-secrets', 'DB_USER=central-db-icog-user:latest',
     '--set-secrets', 'DB_PASSWORD=central-db-icog-password:latest',
-    --add-cloudsql-instances', 'strange-tome-412113:us-central1:stg-icog-psql',
+    '--add-cloudsql-instances', 'strange-tome-412113:us-central1:stg-icog-psql',
     ]
 timeout: 600s
 options:
