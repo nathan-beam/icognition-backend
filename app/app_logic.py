@@ -3,7 +3,7 @@ import sys
 import logging
 import os
 from app import html_parser
-from app.db_connector import get_connection
+from app.db_connector import get_engine
 from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
 from app.together_api_client import InclusiveTemplate, TogetherMixtralClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
@@ -19,17 +19,21 @@ logging.basicConfig(
 
 env_vers = os.environ
 
-engine = get_connection()
+engine = get_engine()
 
 mixtralClient = TogetherMixtralClient()
 inclusiveTemplate = InclusiveTemplate()
 
 
 def test_db_connection():
-    logging.info(f"Testing database connection. Connection string:")
-    with Session(engine) as session:
-        bm = session.scalar(select(Bookmark).limit(1))
-    return bm
+
+    try:
+        conn = engine.connect()
+        conn.close()
+        return True
+    except sqlalchemy.exc.OperationalError as e:
+        logging.error(f"Error connectiong to DB {e}")
+        return None
 
 
 def delete_bookmark_and_associate_records(bookmark_id) -> None:

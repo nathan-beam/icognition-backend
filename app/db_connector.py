@@ -63,7 +63,7 @@ def connect() -> sqlalchemy.engine.base.Engine:
     return pool
 
 
-def get_connection():
+def get_engine():
     return (
         connect_unix_socket()
         if os.environ.get("INSTANCE_CONNECTION_NAME")
