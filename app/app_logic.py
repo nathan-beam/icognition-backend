@@ -3,6 +3,7 @@ import sys
 import logging
 import os
 from app import html_parser
+from app.db_connector import get_connection
 from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
 from app.together_api_client import InclusiveTemplate, TogetherMixtralClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
@@ -16,18 +17,16 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-config = os.environ
+env_vers = os.environ
 
-engine = create_engine(config["DATABASE_URL"], client_encoding="utf8")
+engine = get_connection()
 
 mixtralClient = TogetherMixtralClient()
 inclusiveTemplate = InclusiveTemplate()
 
 
 def test_db_connection():
-    logging.info(
-        f"Testing database connection. Connection string: {config['DATABASE_URL']}"
-    )
+    logging.info(f"Testing database connection. Connection string:")
     with Session(engine) as session:
         bm = session.scalar(select(Bookmark).limit(1))
     return bm
@@ -242,7 +241,7 @@ def create_bookmark(page: Page) -> Bookmark:
 
     # Check if document exists, retrieve the bookmark and return
     # if exists. Else, create the document, bookmark.
-    user_id = config["DUMMY_USER"]
+    user_id = env_vers["DUMMY_USER"]
 
     bookmark = session.scalar(
         select(Bookmark).where(
