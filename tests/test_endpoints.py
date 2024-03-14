@@ -6,7 +6,7 @@ from typing import List
 """ Generate unit test for endpoints.py FastAPI functions """
 
 
-base_url = "http://localhost:8889"
+base_url = "https://icognition-api-scv-5csjr6fjpa-uc.a.run.app"
 
 url = "https://www.yahoo.com/finance/news/collecting-degrees-thermometer-atlanta-woman-110000419.html"
 payload = {"url": url}
