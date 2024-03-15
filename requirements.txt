@@ -99,3 +99,4 @@ wcwidth==0.2.13
 weasel==0.3.4
 wheel==0.41.2
 widgetsnbextension==4.0.9
+openai==1.14.0
