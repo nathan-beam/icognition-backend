@@ -5,7 +5,7 @@ import os
 from app import html_parser
 from app.db_connector import get_engine
 from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
-from app.together_api_client import TogetherMixtralOpenAIClient
+from app.together_api_client import TogetherMixtralOpenAIClient, TogetherMixtralClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,7 @@ env_vers = os.environ
 
 engine = get_engine()
 
-mixtralClient = TogetherMixtralOpenAIClient()
+mixtralClient = TogetherMixtralClient()
 
 
 def test_db_connection():

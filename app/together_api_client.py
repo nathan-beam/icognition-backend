@@ -52,7 +52,7 @@ class InclusiveTemplate(PromptTemplates):
 
         <</SYS>>
 
-        Answers output must confirm to the this JSON format [/INST] 
+        Answers output must confirm to the this JSON format. Insure the JSON is valid. Shorten the answer to make sure the JSON is valid. [/INST] 
 
         JSON Output: {{
         "oneSentenceSummary" : "Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
@@ -76,7 +76,7 @@ class InclusiveTemplate(PromptTemplates):
         Use the examples above to answer the following questions.
         1. Summarize the article in one sentence. Limit the answer to twenty words.
         2. Summarize the article in multiple bullet-points. Each bullet-point need to have betweeen ten to tweenty words. Limit the number of bullet points must below six.
-        3. Identify ten entities (companies, people, location, products....) mentioned in the article. Include short explanation for each entity.
+        3. Identify up to six entities (companies, people, location, products....) mentioned in the article. Include concise explanation for each entity.
         4. Identify three concepts or ideas mentioned in the article. Include short explanation for each concept or idea.
 
         Use the JSON format above to output your answer. Only output valid JSON format.
@@ -187,21 +187,26 @@ class TogetherMixtralClient:
         self,
         body_text: str,
         template: PromptTemplates = InclusiveTemplate(),
+        model=DocumentInfo,
         temperature=0.2,
         top_p=0.8,
         top_k=70,
-    ) -> dict:
+    ) -> DocumentInfo:
         ## Use template to generate prompt
         prompt = template(body_text)
         ## Build payload
         payload = {
             "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
             "prompt": prompt,
-            "max_tokens": 1000,
+            "max_tokens": 1024,
             "temperature": temperature,
             "top_p": top_p,
             "top_k": top_k,
             "repetition_penalty": 1,
+            "response_format": {
+                "type": "json_object",
+                "schema": model.model_json_schema(),
+            },
         }
 
         logging.info(f"Sending query to API with template: {template.__name__}...")
@@ -214,10 +219,19 @@ class TogetherMixtralClient:
                 logging.debug(f"Attempt {self._retry_attempts} to generate summary")
                 res = self.api_call(payload)
                 logging.debug(f"Response status: {res['status']}")
-                answer = template.handleResponse(res)
+
             except Exception as e:
                 logging.error(f"Error calling API and/or handleResponse: {e}")
-                raise Exception(e)
+                raise e
+
+            try:
+                answer = DocumentInfo.model_validate_json(
+                    res["output"]["choices"][0]["text"]
+                )
+
+            except ValidationError as e:
+                logging.error(f"Error validating JSON: {e}")
+                raise e
 
             if answer is not None:
                 logging.debug(
@@ -236,7 +250,7 @@ class TogetherMixtralClient:
                     f"Exitting retry loop. Number of attempts {self._retry_attempts}"
                 )
 
-        return res
+        return answer
 
 
 class TogetherMixtralOpenAIClient:

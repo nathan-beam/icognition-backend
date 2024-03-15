@@ -64,7 +64,7 @@ class Document(SQLModel, table=True):
     original_text: str = Field(default=None, nullable=True)
     authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=[])
     short_summary: str = Field(default=None, nullable=True)
-    summary_bullet_points: str = Field(default=[], sa_column=Column(JSON))
+    summary_bullet_points: List[str] = Field(default=[], sa_column=Column(JSON))
     raw_answer: str = Field(default=None, nullable=True)
     publication_date: datetime = Field(default=None, nullable=True)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
