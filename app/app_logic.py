@@ -5,7 +5,7 @@ import os
 from app import html_parser
 from app.db_connector import get_engine
 from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
-from app.together_api_client import InclusiveTemplate, TogetherMixtralClient
+from app.together_api_client import TogetherMixtralOpenAIClient
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 logging.basicConfig(
     stream=sys.stdout,
     format="%(asctime)s - %(message)s",
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
@@ -21,8 +21,7 @@ env_vers = os.environ
 
 engine = get_engine()
 
-mixtralClient = TogetherMixtralClient()
-inclusiveTemplate = InclusiveTemplate()
+mixtralClient = TogetherMixtralOpenAIClient()
 
 
 def test_db_connection():
@@ -100,7 +99,6 @@ def get_document_by_url(url) -> Document:
     session = Session(engine)
     doc = session.scalar(select(Document).where(Document.url == url))
     session.close()
-    return doc
 
 
 def get_documents_ids() -> list[int]:
@@ -182,15 +180,9 @@ def extract_info_from_doc(doc: Document):
 
     try:
         logging.info(f"Generating summary for document {doc.id}")
-        response = mixtralClient.generate(doc.original_text, inclusiveTemplate)
+        response = mixtralClient.generate(doc.original_text)
         logging.info(f"Response from LLM {response}")
-        summary_obj = inclusiveTemplate.handleResponse(response)
-        logging.info(f"Summary object {summary_obj}")
 
-        one_line_summary = summary_obj["oneSentenceSummary"]
-        bullet_points = summary_obj["summaryInNumericBulletPoints"]
-        entities = summary_obj["entities"]
-        concepts = summary_obj["concepts_ideas"]
     except Exception as e:
         logging.error(f"Error generating with LLM {e}")
         doc.status = "Failure"
@@ -198,34 +190,34 @@ def extract_info_from_doc(doc: Document):
         return
 
     try:
-        if one_line_summary:
-            doc.short_summary = one_line_summary
+        if response.oneSentenceSummary:
+            doc.short_summary = response.oneSentenceSummary
         else:
             doc.short_summary = "No summary was generated"
 
-        if bullet_points:
-            doc.summary_bullet_points = bullet_points
+        if response.summaryInNumericBulletPoints:
+            doc.summary_bullet_points = response.summaryInNumericBulletPoints
         else:
             doc.summary_bullet_points = ["No bullet points were generated"]
 
-        if entities:
+        if response.entities:
             new_entities = []
-            for entity in entities:
+            for entity in response.entities:
                 new_entity = Entity()
                 new_entity.document_id = doc.id
-                new_entity.name = entity["name"]
-                new_entity.description = entity["explanation"]
-                new_entity.type = entity["type"]
+                new_entity.name = entity.name
+                new_entity.description = entity.explanation
+                new_entity.type = entity.type
                 new_entity.source = mixtralClient._model_name
                 new_entities.append(new_entity)
 
-        if concepts:
+        if response.concepts_ideas:
             new_concepts = []
-            for concept in concepts:
+            for concept in response.concepts_ideas:
                 new_concept = Concept()
                 new_concept.document_id = doc.id
-                new_concept.name = concept["concept"]
-                new_concept.description = concept["explanation"]
+                new_concept.name = concept.concept
+                new_concept.description = concept.explanation
                 new_concept.source = mixtralClient._model_name
                 new_concepts.append(new_concept)
 

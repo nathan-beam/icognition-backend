@@ -13,7 +13,7 @@ from app.icog_util import truncate_text
 logging.basicConfig(
     stream=sys.stdout,
     format="%(asctime)s - %(message)s",
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
