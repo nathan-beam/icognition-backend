@@ -47,10 +47,16 @@ def get_webpage(payload: PagePayload) -> BeautifulSoup:
 
 
 def get_paragraphs(soup: BeautifulSoup) -> list[str]:
-    # HBS article tag: article = soup.select('div[class*="article-body"]')
-    articles = soup.find_all("article")
 
-    if articles == None:
+    articles = []
+    selectors = ["article", "div#article", "div.article-body", "div.article", "main"]
+
+    for selector in selectors:
+        articles = soup.select(selector)
+        if len(articles) > 0:
+            break
+
+    if len(articles) == 0:
         return None
 
     content_estimator = []
@@ -83,12 +89,13 @@ def get_paragraphs(soup: BeautifulSoup) -> list[str]:
 
 
 def get_title(soup: BeautifulSoup) -> str:
-    h1 = soup.find("h1")
-    if h1 is None:
-        logging.error("No title found in webpage")
-        return None
 
-    return h1.text
+    title = soup.find("h1")
+    if title is None:
+        logging.error("No title found in webpage")
+        title = soup.find("h2")
+
+    return title.text
 
 
 def extract_author_medium(soup: BeautifulSoup) -> str:

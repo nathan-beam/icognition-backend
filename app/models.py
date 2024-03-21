@@ -59,8 +59,8 @@ class Document(SQLModel, table=True):
     """
 
     id: int = Field(default=None, primary_key=True)
-    title: str = Field(default=None)
-    url: str = Field(default=None)
+    title: str = Field(default=None, nullable=True)
+    url: str = Field(default=None, nullable=True)
     original_text: str = Field(default=None, nullable=True)
     authors: List[float] = Field(sa_column=Column(ARRAY(Float)), default=[])
     short_summary: str = Field(default=None, nullable=True)
