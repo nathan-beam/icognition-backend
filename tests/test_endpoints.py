@@ -10,8 +10,8 @@ base_url = (
     "http://127.0.0.1:8889"  # "https://icognition-api-scv-5csjr6fjpa-uc.a.run.app"
 )
 
-url = "https://www.yahoo.com/finance/news/collecting-degrees-thermometer-atlanta-woman-110000419.html"
-payload = {"url": url}
+url = "https://www.yahoo.com/sports/march-madness-no-11-duquesne-upsets-no-6-byu-for-first-tournament-win-in-over-50-years-185918242.html"
+payload = {"url": url, "user_id": "7778888"}
 
 # Unit test for create bookmart
 
@@ -31,6 +31,7 @@ def test_bookmark_end_to_end_workflow():
         assert status_code == 204
 
     response = requests.post(f"{base_url}/bookmark", json=payload)
+    assert response.status_code == 201
     bookmark_id = response.json()["id"]
     document_id = response.json()["document_id"]
     assert bookmark_id != None

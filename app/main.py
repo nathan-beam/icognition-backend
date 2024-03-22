@@ -58,6 +58,13 @@ async def create_bookmark(payload: PagePayload, background_tasks: BackgroundTask
     """
     logging.info(f"Icognition bookmark endpoint called on {payload.url}")
 
+    if payload.user_id == None:
+        logging.warn(f"User ID not provided for {payload.url}")
+        raise HTTPException(
+            status_code=204,
+            detail="User ID not provided for the bookmark",
+        )
+
     page = app_logic.create_page(payload)
 
     if page is None:
@@ -74,7 +81,7 @@ async def create_bookmark(payload: PagePayload, background_tasks: BackgroundTask
         return bookmark
     else:
         logging.info(f"Page object created for {page.clean_url}")
-        bookmark = app_logic.create_bookmark(page)
+        bookmark = app_logic.create_bookmark(page, payload.user_id)
         logging.info(f"Bookmark created for {bookmark.url}")
         background_tasks.add_task(generate_document, bookmark.document_id)
         return bookmark

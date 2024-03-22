@@ -26,6 +26,12 @@ client = openai.OpenAI(
 )
 
 
+class ApiCallException(Exception):
+    def __init__(self, message, response):
+        super().__init__(message)
+        self.response = response
+
+
 class PromptTemplates:
     def __init__(self) -> None:
         self.template = ""
@@ -166,6 +172,14 @@ class TogetherMixtralClient:
             logging.info(
                 f"API Call Error: {response.content}. Status code: {response.status_code}"
             )
+            raise ApiCallException(
+                "Error during API call",
+                {
+                    "status_code": response.status_code,
+                    "content": response.content,
+                    "reason": response.reason,
+                },
+            )
 
         elif response.status_code == 200:
             try:
@@ -176,7 +190,7 @@ class TogetherMixtralClient:
                 return results
             except json.JSONDecodeError:
                 logging.error(f"Error decoding JSON response: {response}")
-                return None
+                raise json.JSONDecodeError
         else:
             logging.error(
                 f"Response from HF API isn't right. Status code: {response.status_code} Contenct {response.content}"
@@ -220,6 +234,10 @@ class TogetherMixtralClient:
                 res = self.api_call(payload)
                 logging.debug(f"Response status: {res['status']}")
 
+            except ApiCallException as e:
+                logging.error(f"Error calling API and/or handleResponse: {e}")
+                raise e
+
             except Exception as e:
                 logging.error(f"Error calling API and/or handleResponse: {e}")
                 raise e
@@ -228,6 +246,7 @@ class TogetherMixtralClient:
                 answer = DocumentInfo.model_validate_json(
                     res["output"]["choices"][0]["text"]
                 )
+                answer.usage = res["usage"]
 
             except ValidationError as e:
                 logging.error(f"Error validating JSON: {e}")

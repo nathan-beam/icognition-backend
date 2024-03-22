@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, ARRAY, Float, JSON
 from sqlalchemy import Column
-from sqlalchemy.dialects.postgresql import TEXT
+from sqlalchemy.dialects.postgresql import TEXT, JSONB
 from typing import Optional, List, Dict
 from datetime import datetime
 from pydantic import BaseModel
@@ -18,6 +18,7 @@ class PagePayload(SQLModel, table=False):
 
     url: Optional[str] = Field(default=None)
     html: Optional[str] = Field(default=None)
+    user_id: str = Field(default=None, nullable=True)
 
 
 class HTTPError(SQLModel, table=False):
@@ -49,7 +50,7 @@ class Bookmark(SQLModel, table=True):
     url: str = Field(nullable=False)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     document_id: Optional[int] = Field(default=None, nullable=True)
-    user_id: Optional[int] = Field(default=777, nullable=True)
+    user_id: Optional[str] = Field(nullable=False)
 
 
 class Document(SQLModel, table=True):
@@ -69,19 +70,7 @@ class Document(SQLModel, table=True):
     publication_date: datetime = Field(default=None, nullable=True)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
     status: str = Field(default="Pending", nullable=True)
-
-
-class DocumentInfo(SQLModel, table=False):
-    """
-    Represents additional information about a document, including its ID, one-sentence summary,
-    summary in numeric bullet points, entities, and concepts/ideas.
-    """
-
-    id: int = Field(default=None, primary_key=True)
-    oneSentenceSummary: Optional[str] = Field(default=None)
-    summaryInNumericBulletPoints: Optional[List[str]] = Field(default=None)
-    entities: str = Field(default=[], sa_column=Column(JSON))
-    concepts_ideas: str = Field(default=[], sa_column=Column(JSON))
+    llm_usage: Optional[str] = Field(default=None, nullable=True)
 
 
 class DocArtifact(SQLModel, table=False):
@@ -152,3 +141,4 @@ class DocumentInfo(BaseModel):
 
     entities: Optional[List[IdentifyEntity]]
     concepts_ideas: Optional[List[IdentifyConceptIdea]]
+    usage: Optional[str]

@@ -5,7 +5,11 @@ import os
 from app import html_parser
 from app.db_connector import get_engine
 from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
-from app.together_api_client import TogetherMixtralOpenAIClient, TogetherMixtralClient
+from app.together_api_client import (
+    TogetherMixtralOpenAIClient,
+    TogetherMixtralClient,
+    ApiCallException,
+)
 from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
 from sqlalchemy.orm import Session
 
@@ -66,7 +70,7 @@ def delete_document_and_associate_records(document_id) -> None:
         logging.info(f"Document {document_id} and associated records deleted")
 
 
-def delete_all_of_users_records(user_id: int) -> None:
+def delete_all_of_users_records(user_id: str) -> None:
     """Delete all of the records for a user. This function was create for testing
 
     Args:
@@ -183,6 +187,14 @@ def extract_info_from_doc(doc: Document):
         response = mixtralClient.generate(doc.original_text)
         logging.info(f"Response from LLM {response}")
 
+    except ApiCallException as e:
+        logging.error(f"Error generating with LLM {e}")
+        ## TODO store exception in DB
+
+        doc.status = "Api Failure"
+        update_document(doc)
+        return
+
     except Exception as e:
         logging.error(f"Error generating with LLM {e}")
         doc.status = "Failure"
@@ -199,6 +211,9 @@ def extract_info_from_doc(doc: Document):
             doc.summary_bullet_points = response.summaryInNumericBulletPoints
         else:
             doc.summary_bullet_points = ["No bullet points were generated"]
+
+        if response.usage:
+            doc.llm_usage = response.usage
 
         if response.entities:
             new_entities = []
@@ -221,6 +236,8 @@ def extract_info_from_doc(doc: Document):
                 new_concept.source = mixtralClient._model_name
                 new_concepts.append(new_concept)
 
+        logging.info(f"LLM ussage was {response.usage}")
+
         doc.update_at = datetime.datetime.now()
         doc.status = "Done"
 
@@ -232,16 +249,15 @@ def extract_info_from_doc(doc: Document):
         update_document(doc)
 
 
-def create_bookmark(page: Page) -> Bookmark:
+def create_bookmark(page: Page, user_id: str) -> Bookmark:
     session = Session(engine)
 
     # Check if document exists, retrieve the bookmark and return
     # if exists. Else, create the document, bookmark.
-    user_id = env_vers["DUMMY_USER"]
 
     bookmark = session.scalar(
         select(Bookmark).where(
-            and_(Bookmark.url == page.clean_url, Bookmark.user_id == int(user_id))
+            and_(Bookmark.url == page.clean_url, Bookmark.user_id == user_id)
         )
     )
 
@@ -256,6 +272,7 @@ def create_bookmark(page: Page) -> Bookmark:
     bookmark.url = page.clean_url
     bookmark.update_at = datetime.datetime.now()
     bookmark.document_id = doc.id
+    bookmark.user_id = user_id
 
     session.add(bookmark)
     session.commit()
@@ -267,7 +284,7 @@ def create_bookmark(page: Page) -> Bookmark:
     return bookmark
 
 
-def get_bookmarks_by_user_id(user_id: int) -> list[Bookmark]:
+def get_bookmarks_by_user_id(user_id: str) -> list[Bookmark]:
     session = Session(engine)
     bookmarks = session.scalars(
         select(Bookmark).where(Bookmark.user_id == user_id)
