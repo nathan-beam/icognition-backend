@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field, ARRAY, Float, JSON
+from sqlmodel import SQLModel, Field, ARRAY, Float, JSON, Integer
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import TEXT, JSONB
 from typing import Optional, List, Dict
@@ -51,6 +51,7 @@ class Bookmark(SQLModel, table=True):
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     document_id: Optional[int] = Field(default=None, nullable=True)
     user_id: Optional[str] = Field(nullable=False)
+    cloned_documents: List[int] = Field(default=[], sa_column=Column(ARRAY(Integer)))
 
 
 class Document(SQLModel, table=True):

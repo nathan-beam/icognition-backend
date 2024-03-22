@@ -98,21 +98,37 @@ async def regenerate_document(doc: Document, background_tasks: BackgroundTasks):
     logging.info(f"Regenrate Document ID {doc.id}")
 
     # Generate LLM content in a background process
-    background_tasks.add_task(generate_document, doc.id)
+    background_tasks.add_task(regenerate_document, doc)
     return doc
 
 
-## Background task to generate summaries from LLM if not already exists
+## Background task to generate summaries from LLM
 async def generate_document(document_id):
-    doc = app_logic.get_document_by_id(document_id)
+    document = app_logic.get_document_by_id(document_id)
 
-    if doc.status in ["Pending", "Done", "Failure"]:
-        logging.info(f"Background task for generating document ID {document_id}")
-        app_logic.extract_info_from_doc(doc)
+    if document.status in ["Pending", "Done", "Failure"]:
+        logging.info(f"Background task for document ID: {document_id}")
+        document = app_logic.extract_info_from_doc(document)
+        logging.info(f"Background task for document ID: {document_id} completed")
+
+
+## Background task to regenerate summaries from LLM if not already exists
+async def regenerate_document(old_doc: Document):
+
+    if old_doc.status in ["Pending", "Done", "Failure"]:
+        new_doc = app_logic.clone_document(old_doc)
+
+        logging.info(
+            f"Background task for clone and generating old document ID: {old_doc.id}, new document ID: {new_doc.id}"
+        )
+        new_doc = app_logic.extract_info_from_doc(new_doc)
+        app_logic.reassociate_bookmark_with_document(old_doc.id, new_doc.id)
+
+        logging.info(f"Background task for document ID: {new_doc.id} completed")
 
 
 @app.get("/bookmark/user/{user_id}", response_model=List[Bookmark], status_code=200)
-async def get_bookmarks_by_user_id(user_id: int = 777):
+async def get_bookmarks_by_user_id(user_id: str):
     bookmarks = app_logic.get_bookmarks_by_user_id(user_id)
 
     if bookmarks is None:

@@ -96,3 +96,27 @@ def xtest_get_document():
     response = None
     response = requests.get(f"{base_url}/document/{id}")
     assert response.status_code == 200
+
+
+def test_document_regeration():
+    ## get document by url
+    bookmark_response = requests.get(f"{base_url}/bookmark", params={"url": url})
+    bookmark = bookmark_response.json()
+    assert bookmark != None
+
+    # get document by document id
+    doc_response = requests.get(f"{base_url}/document/{bookmark['document_id']}")
+    doc = doc_response.json()
+    assert doc != None
+
+    # regenerate document
+    doc["status"] = "Done"
+    new_doc_response = requests.post(f"{base_url}/document/", json=doc)
+    assert new_doc_response.status_code == 202
+    new_doc = new_doc_response.json()
+    assert new_doc != None
+
+    bookmark_response = requests.get(f"{base_url}/bookmark", params={"url": url})
+    bookmark2 = bookmark_response.json()
+    assert bookmark2["cloned_documents"] != None
+    assert bookmark2["document_id"] != new_doc["id"]

@@ -160,6 +160,23 @@ def create_document(page: Page):
     return doc
 
 
+def clone_document(doc: Document):
+    ## Clone document. This is used when regenerasting a document, we keep the old document and it's related objects
+    new_doc = Document()
+    new_doc.title = doc.title
+    new_doc.url = doc.url
+    new_doc.original_text = doc.original_text
+
+    with Session(engine) as session:
+        session.add(new_doc)
+        session.commit()
+        session.refresh(new_doc)
+
+        # Update the old document to show it was cloned
+        doc.status = "Cloned"
+        return new_doc
+
+
 def update_document(doc: Document, related_objects: list[list] = None):
     with Session(engine) as session:
         session.add(doc)
@@ -171,6 +188,28 @@ def update_document(doc: Document, related_objects: list[list] = None):
         session.commit()
         session.refresh(doc)
         return doc
+
+
+def reassociate_bookmark_with_document(old_document_id, new_document_id):
+    """
+    This function reassociate a bookmark with a new document
+    """
+    with Session(engine) as session:
+        bookmark = session.scalar(
+            select(Bookmark).where(Bookmark.document_id == old_document_id)
+        )
+        if bookmark:
+            bookmark.document_id = new_document_id
+            if bookmark.cloned_documents == None:
+                bookmark.cloned_documents = [old_document_id]
+            else:
+                bookmark.cloned_documents.append(old_document_id)
+            session.commit()
+            logging.info(
+                f"Bookmark {bookmark.id} reassociated with document {new_document_id}"
+            )
+        else:
+            logging.error(f"Bookmark {bookmark_id} not found")
 
 
 def extract_info_from_doc(doc: Document):
@@ -241,7 +280,7 @@ def extract_info_from_doc(doc: Document):
         doc.update_at = datetime.datetime.now()
         doc.status = "Done"
 
-        update_document(doc, [new_entities, new_concepts])
+        return update_document(doc, [new_entities, new_concepts])
 
     except Exception as e:
         doc.status = "Failure"
