@@ -7,7 +7,7 @@ from typing import List
 
 
 base_url = (
-    "http://127.0.0.1:8889"  # "https://icognition-api-scv-5csjr6fjpa-uc.a.run.app"
+    "https://icognition-api-scv-5csjr6fjpa-uc.a.run.app"  # "http://127.0.0.1:8889"
 )
 
 url = "https://www.yahoo.com/sports/march-madness-no-11-duquesne-upsets-no-6-byu-for-first-tournament-win-in-over-50-years-185918242.html"

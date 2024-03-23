@@ -71,7 +71,7 @@ class Document(SQLModel, table=True):
     publication_date: datetime = Field(default=None, nullable=True)
     update_at: datetime = Field(default_factory=datetime.utcnow, nullable=True)
     status: str = Field(default="Pending", nullable=True)
-    llm_usage: Optional[str] = Field(default=None, nullable=True)
+    llm_service_meta: Optional[Dict] = Field(default={}, sa_column=Column(JSONB))
 
 
 class DocArtifact(SQLModel, table=False):

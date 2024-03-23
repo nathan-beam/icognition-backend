@@ -209,7 +209,7 @@ def reassociate_bookmark_with_document(old_document_id, new_document_id):
                 f"Bookmark {bookmark.id} reassociated with document {new_document_id}"
             )
         else:
-            logging.error(f"Bookmark {bookmark_id} not found")
+            logging.error(f"Bookmark {bookmark.id} not found")
 
 
 def extract_info_from_doc(doc: Document):
@@ -252,7 +252,7 @@ def extract_info_from_doc(doc: Document):
             doc.summary_bullet_points = ["No bullet points were generated"]
 
         if response.usage:
-            doc.llm_usage = response.usage
+            doc.llm_service_meta = response.usage
 
         if response.entities:
             new_entities = []
