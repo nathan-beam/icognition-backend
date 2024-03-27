@@ -33,11 +33,17 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Icognition API"}
+
+
 @app.get("/ping", status_code=200)
 async def ping():
-    bm = app_logic.test_db_connection()
-
-    if bm is None:
+    try:
+        bm = app_logic.test_db_connection()
+    except Exception as e:
+        logging.error(e)
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     return {"Message": "Service is up and running"}
