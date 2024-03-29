@@ -3,9 +3,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from app.models import Bookmark, Document, PagePayload, DocumentPlus
+from app.models import Bookmark, Document, PagePayload, DocumentPlus, DocumentDisplay
 import logging
-import sys
+import sys, re
 import uvicorn
 import app.app_logic as app_logic
 import urllib.parse as urlparse
@@ -21,13 +21,13 @@ logging.basicConfig(
 app = FastAPI()
 origins = [
     "chrome-extension://oeilkphkfimekfadiflbljknbhfmppej",
-    "chrome-extension://*",
-    "*://localhost:*",
+    "http://localhost:8080",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -142,6 +142,45 @@ async def get_bookmarks_by_user_id(user_id: str):
 
     logging.info(f"Icognition return {len(bookmarks)} bookmarks")
     return bookmarks
+
+
+@app.get(
+    "/documents_plus/user/{user_id}",
+    response_model=List[DocumentDisplay],
+    status_code=200,
+)
+async def get_documents_plus_by_user_id(user_id: str):
+    bookmarks = app_logic.get_bookmarks_by_user_id(user_id)
+
+    if bookmarks is None:
+        raise HTTPException(status_code=404, detail="Bookmarks not found")
+
+    results = []
+    for bookmark in bookmarks:
+        document = app_logic.get_document_by_id(bookmark.document_id)
+        concepts = app_logic.get_concepts_by_document_id(document.id)
+        entities = app_logic.get_entities_by_document_id(document.id)
+
+        display = DocumentDisplay(
+            id=document.id,
+            title=document.title.strip(),
+            url=document.url,
+            status=document.status,
+            update_at=document.update_at,
+            # Write list comprehension that removes number prefix like 1., 2. etc from document.summary_bullet_points
+            tldr=[
+                re.sub(r"[1-9]{,2}\.", "", point).strip()
+                for point in document.summary_bullet_points
+            ],
+            oneSentenceSummary=document.short_summary,
+            concepts_ideas=concepts,
+            entities=entities,
+        )
+
+        results.append(display)
+
+    logging.info(f"Icognition return {len(results)} documents_plus")
+    return results
 
 
 @app.get("/bookmark", response_model=Bookmark, status_code=200)

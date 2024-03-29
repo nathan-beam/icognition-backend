@@ -9,7 +9,7 @@ import openai
 from time import sleep
 from transformers import AutoTokenizer
 from app.icog_util import truncate_text
-from app.models import DocumentInfo
+from app.models import DocumentJsonForLLMS
 
 
 logging.basicConfig(
@@ -145,7 +145,41 @@ class TogetherMixtralClient:
         self._retry_sleep = 30
         self._retry_attempts = 0
         self._retry_max_attempts = 2
-        self._templates = PromptTemplates()
+
+        self._system_content = """You are a researcher task with answering questions about an article.  
+        Please ensure that your responses are socially unbiased and positive in nature.
+        If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. 
+        If you don't know the answer, please don't share false information."""
+
+        self._user_content_1_examples = """Answers output must confirm to the this JSON format [/INST] 
+
+        JSON Output: {{
+        "oneSentenceSummary" : "Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
+        "summaryInNumericBulletPoints" : [
+        "1. Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
+        "2. Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
+        ],
+        "entities" : [
+        {{"name": "semiconductor", "type": "industry", "explanation": "Companies engaged in the design and fabrication of semiconductors and semiconductor devices"}},
+        {{"name": "NBA", "type": "sport league", "explanation": "NBA is the national basketball league"}},
+        {{"name": "Ford F150", "type": "vehicle", "explanation": "Article talks about the Ford F150 truck"}},
+        ],
+        "concepts_ideas": [
+            {{"concept": "mobile game soft launch", "explanation": "Mobile game soft launch is a process of releasing a game to a limited audience for testing."}},
+            {{"concept": "US Civil War", "explanation": "The American Civil War was a civil war in the United States between the Union and the Confederacy, which had been formed by states that had seceded from the Union. The central cause of the war was the dispute over whether slavery would be permitted to expand into the western territories, leading to more slave states, or be prevented from doing so, which many believed would place slavery on a course of ultimate extinction."}},
+            {{"concet": "Capitalism", "explanation": Capitalism is an economic system based on the private ownership of the means of production and their operation for profit. Central characteristics of capitalism include capital accumulation, competitive markets, price system, private property, property rights recognition, voluntary exchange, and wage labor."}}    
+        ] 
+        }}"""
+
+        self._user_content_2_task = """Use the examples above to answer the following questions.
+        1. Summarize the article in one sentence. Limit the answer to twenty words.
+        2. Summarize the article in multiple bullet-points. Each bullet-point need to have betweeen ten to tweenty words. Limit the number of bullet points must below six.
+        3. Identify ten entities (companies, people, location, products....) mentioned in the article. Include short explanation for each entity.
+        4. Identify three concepts or ideas mentioned in the article. Include short explanation for each concept or idea.
+
+        Use the JSON format above to output your answer. Only output valid JSON format."""
+
+        self._user_content_3_article = """Article: {BODY}"""
 
     def build_query(self, templete: str, body_text: str) -> str:
         results = templete.format(BODY=body_text)
@@ -201,17 +235,25 @@ class TogetherMixtralClient:
         self,
         body_text: str,
         template: PromptTemplates = InclusiveTemplate(),
-        model=DocumentInfo,
+        model=DocumentJsonForLLMS,
         temperature=0.2,
         top_p=0.8,
         top_k=70,
-    ) -> DocumentInfo:
+    ) -> DocumentJsonForLLMS:
         ## Use template to generate prompt
         prompt = template(body_text)
         ## Build payload
         payload = {
             "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-            "prompt": prompt,
+            "messages": [
+                {"role": "system", "content": self._system_content},
+                {"role": "user", "content": self._user_content_1_examples},
+                {"role": "user", "content": self._user_content_2_task},
+                {
+                    "role": "user",
+                    "content": self._user_content_3_article.format(BODY=body_text),
+                },
+            ],
             "max_tokens": 1024,
             "temperature": temperature,
             "top_p": top_p,
@@ -243,7 +285,7 @@ class TogetherMixtralClient:
                 raise e
 
             try:
-                answer = DocumentInfo.model_validate_json(
+                answer = DocumentJsonForLLMS.model_validate_json(
                     res["output"]["choices"][0]["text"]
                 )
                 answer.usage = res["usage"]
@@ -336,12 +378,12 @@ class TogetherMixtralOpenAIClient:
     def generate(
         self,
         body_text: str,
-        model=DocumentInfo,
+        model=DocumentJsonForLLMS,
         _temperature=0.2,
         _top_p=0.8,
         _frequency_penalty=1.0,
         _max_tokens=1024,
-    ) -> DocumentInfo:
+    ) -> DocumentJsonForLLMS:
 
         chat_completion = client.chat.completions.create(
             model="mistralai/Mixtral-8x7B-Instruct-v0.1",
@@ -368,7 +410,7 @@ class TogetherMixtralOpenAIClient:
         )
 
         try:
-            result = DocumentInfo.model_validate_json(
+            result = DocumentJsonForLLMS.model_validate_json(
                 chat_completion.choices[0].message.content
             )
             return result

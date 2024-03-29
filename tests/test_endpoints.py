@@ -7,7 +7,7 @@ from typing import List
 
 
 base_url = (
-    "https://icognition-api-scv-5csjr6fjpa-uc.a.run.app"  # "http://127.0.0.1:8889"
+    "http://127.0.0.1:8889"  # "https://icognition-api-scv-5csjr6fjpa-uc.a.run.app"
 )
 
 url = "https://www.yahoo.com/sports/march-madness-no-11-duquesne-upsets-no-6-byu-for-first-tournament-win-in-over-50-years-185918242.html"
@@ -120,3 +120,10 @@ def test_document_regeration():
     bookmark2 = bookmark_response.json()
     assert bookmark2["cloned_documents"] != None
     assert bookmark2["document_id"] != new_doc["id"]
+
+
+def test_get_documents_plus_by_user_id():
+    response = requests.get(f"{base_url}/documents_plus/user/777")
+    assert response.status_code == 200
+    documents_plus = response.json()
+    assert len(documents_plus) > 0

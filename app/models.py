@@ -136,10 +136,26 @@ class IdentifyConceptIdea(BaseModel):
     explanation: Optional[str] = Field(default=None)
 
 
-class DocumentInfo(BaseModel):
+class DocumentJsonForLLMS(BaseModel):
     oneSentenceSummary: Optional[str]
     summaryInNumericBulletPoints: Optional[List[str]]
 
     entities: Optional[List[IdentifyEntity]]
     concepts_ideas: Optional[List[IdentifyConceptIdea]]
     usage: Optional[str]
+
+
+class DocumentDisplay(BaseModel):
+    id: Optional[int]
+    title: Optional[str]
+    url: Optional[str] = None
+    authors: Optional[List[str]] = None
+    publicationDate: Optional[str] = None
+    llmServiceMeta: Optional[Dict] = None
+    status: Optional[str] = None
+    updateAt: Optional[str] = None
+    oneSentenceSummary: Optional[str] = None
+    tldr: Optional[List[str]] = None
+    entities: Optional[List[Entity]] = None
+    concepts_ideas: Optional[List[Concept]] = None
+    usage: Optional[str] = None
