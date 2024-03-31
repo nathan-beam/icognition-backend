@@ -93,7 +93,11 @@ async def create_bookmark(payload: PagePayload, background_tasks: BackgroundTask
         return bookmark
 
 
-@app.post("/document", response_model=Document, status_code=status.HTTP_202_ACCEPTED)
+@app.post(
+    "/document/regenerate",
+    response_model=Bookmark,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def regenerate_document(doc: Document, background_tasks: BackgroundTasks):
     """
     This method create document using a bookmark id and a URL.
@@ -102,10 +106,13 @@ async def regenerate_document(doc: Document, background_tasks: BackgroundTasks):
     kickoff the generate and return 202
     """
     logging.info(f"Regenrate Document ID {doc.id}")
-
     # Generate LLM content in a background process
     background_tasks.add_task(regenerate_document, doc)
-    return doc
+
+    # Reason for returning bookmark is because the document will changed after the regeneration,
+    # and the bookmark will be used to get the new document
+    bookmark = app_logic.get_bookmark_by_document_id(doc.id)
+    return bookmark
 
 
 ## Background task to generate summaries from LLM
@@ -128,9 +135,13 @@ async def regenerate_document(old_doc: Document):
             f"Background task for clone and generating old document ID: {old_doc.id}, new document ID: {new_doc.id}"
         )
         new_doc = app_logic.extract_info_from_doc(new_doc)
-        app_logic.reassociate_bookmark_with_document(old_doc.id, new_doc.id)
-
-        logging.info(f"Background task for document ID: {new_doc.id} completed")
+        if new_doc:
+            app_logic.reassociate_bookmark_with_document(old_doc.id, new_doc.id)
+            logging.info(f"Background task for document ID: {new_doc.id} completed")
+        else:
+            logging.error(
+                f"Background document regenaring for document ID: {old_doc.id} failed"
+            )
 
 
 @app.get("/bookmark/user/{user_id}", response_model=List[Bookmark], status_code=200)
@@ -158,24 +169,9 @@ async def get_documents_plus_by_user_id(user_id: str):
     results = []
     for bookmark in bookmarks:
         document = app_logic.get_document_by_id(bookmark.document_id)
-        concepts = app_logic.get_concepts_by_document_id(document.id)
         entities = app_logic.get_entities_by_document_id(document.id)
 
-        display = DocumentDisplay(
-            id=document.id,
-            title=document.title.strip(),
-            url=document.url,
-            status=document.status,
-            update_at=document.update_at,
-            # Write list comprehension that removes number prefix like 1., 2. etc from document.summary_bullet_points
-            tldr=[
-                re.sub(r"[1-9]{,2}\.", "", point).strip()
-                for point in document.summary_bullet_points
-            ],
-            oneSentenceSummary=document.short_summary,
-            concepts_ideas=concepts,
-            entities=entities,
-        )
+        display = DocumentDisplay.from_orm(document, entities=entities)
 
         results.append(display)
 
@@ -211,29 +207,28 @@ async def get_bookmark_document(id: int, response: Response):
         return document
 
 
-@app.get("/document_plus/{id}")
-async def get_document_plus(id: int, response: Response):
+@app.get("/document_plus/{bookmark_id}", response_model=DocumentDisplay)
+async def get_document_plus(bookmark_id: int, response: Response):
     """get document with entities and concepts"""
 
-    logging.info(f"Icognition document plus endpoint called on {id}")
-    document = app_logic.get_document_by_id(id)
+    logging.info(f"Icognition document plus endpoint called on bookmark {bookmark_id}")
+    document = app_logic.get_document_by_bookmark_id(bookmark_id)
 
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
     # If document is still in processing, let the client know
-    if document.status == "Processing":
+    if document.status in ["Processing", "Pending"]:
         response.status_code = status.HTTP_206_PARTIAL_CONTENT
         return None
     elif document.status == "Done":
-        concepts = app_logic.get_concepts_by_document_id(id)
-        entities = app_logic.get_entities_by_document_id(id)
+        entities = app_logic.get_entities_by_document_id(document.id)
 
         response.status_code = status.HTTP_200_OK
-        return DocumentPlus(document=document, concepts=concepts, entities=entities)
+        return DocumentDisplay.from_orm(document, entities=entities)
     else:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return {"document": document}
+        return DocumentDisplay.from_orm(document)
 
 
 @app.get("/document/{id}")

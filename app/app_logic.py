@@ -1,10 +1,10 @@
 import datetime
 import sys
 import logging
-import os
+import os, re
 from app import html_parser
 from app.db_connector import get_engine
-from app.models import Bookmark, Entity, Concept, Page, Document, PagePayload
+from app.models import Bookmark, Entity, Page, Document, PagePayload
 from app.together_api_client import (
     TogetherMixtralOpenAIClient,
     TogetherMixtralClient,
@@ -121,15 +121,6 @@ def get_entities_by_document_id(document_id) -> Entity:
     return entities
 
 
-def get_concepts_by_document_id(document_id) -> Concept:
-    session = Session(engine)
-    concepts = session.scalars(
-        select(Concept).where(Concept.document_id == document_id)
-    ).all()
-    session.close()
-    return concepts
-
-
 def create_page(payload: PagePayload) -> Page:
     page = html_parser.create_page(payload)
     if page == None:
@@ -149,7 +140,7 @@ def create_document(page: Page):
         return doc
 
     doc = Document()
-    doc.title = page.title
+    doc.title = page.title.strip()
     doc.url = page.clean_url
     doc.original_text = page.full_text
     session.add(doc)
@@ -200,10 +191,8 @@ def reassociate_bookmark_with_document(old_document_id, new_document_id):
         )
         if bookmark:
             bookmark.document_id = new_document_id
-            if bookmark.cloned_documents == None:
-                bookmark.cloned_documents = [old_document_id]
-            else:
-                bookmark.cloned_documents.append(old_document_id)
+            bookmark.cloned_documents.append(old_document_id)
+
             session.commit()
             logging.info(
                 f"Bookmark {bookmark.id} reassociated with document {new_document_id}"
@@ -247,16 +236,20 @@ def extract_info_from_doc(doc: Document):
             doc.short_summary = "No summary was generated"
 
         if response.summaryInNumericBulletPoints:
-            doc.summary_bullet_points = response.summaryInNumericBulletPoints
+            doc.summary_bullet_points = [
+                re.sub(r"[1-9]{,2}\.", "", point).strip()
+                for point in response.summaryInNumericBulletPoints
+            ]
+
         else:
             doc.summary_bullet_points = ["No bullet points were generated"]
 
         if response.usage:
             doc.llm_service_meta = response.usage
 
-        if response.entities:
+        if response.entities_and_concepts:
             new_entities = []
-            for entity in response.entities:
+            for entity in response.entities_and_concepts:
                 new_entity = Entity()
                 new_entity.document_id = doc.id
                 new_entity.name = entity.name
@@ -265,22 +258,12 @@ def extract_info_from_doc(doc: Document):
                 new_entity.source = mixtralClient._model_name
                 new_entities.append(new_entity)
 
-        if response.concepts_ideas:
-            new_concepts = []
-            for concept in response.concepts_ideas:
-                new_concept = Concept()
-                new_concept.document_id = doc.id
-                new_concept.name = concept.concept
-                new_concept.description = concept.explanation
-                new_concept.source = mixtralClient._model_name
-                new_concepts.append(new_concept)
-
         logging.info(f"LLM ussage was {response.usage}")
 
         doc.update_at = datetime.datetime.now()
         doc.status = "Done"
 
-        return update_document(doc, [new_entities, new_concepts])
+        return update_document(doc, [new_entities])
 
     except Exception as e:
         doc.status = "Failure"
@@ -326,7 +309,9 @@ def create_bookmark(page: Page, user_id: str) -> Bookmark:
 def get_bookmarks_by_user_id(user_id: str) -> list[Bookmark]:
     session = Session(engine)
     bookmarks = session.scalars(
-        select(Bookmark).where(Bookmark.user_id == user_id)
+        select(Bookmark)
+        .where(Bookmark.user_id == user_id)
+        .order_by(Bookmark.update_at.desc())
     ).all()
     session.close()
     return bookmarks
@@ -361,12 +346,3 @@ def get_entities_by_document_id(document_id) -> list[Entity]:
     ).all()
     session.close()
     return entities
-
-
-def get_concepts_by_document_id(document_id) -> list[Concept]:
-    session = Session(engine)
-    concepts = session.scalars(
-        select(Concept).where(Concept.document_id == document_id)
-    ).all()
-    session.close()
-    return concepts

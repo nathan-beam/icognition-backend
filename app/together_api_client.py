@@ -151,7 +151,7 @@ class TogetherMixtralClient:
         If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. 
         If you don't know the answer, please don't share false information."""
 
-        self._user_content_1_examples = """Answers output must confirm to the this JSON format [/INST] 
+        self._user_content_1_examples = """Answers output must confirm to the this JSON format. Insure the JSON is valid. Shorten the answer to make sure the JSON is valid. [/INST] 
 
         JSON Output: {{
         "oneSentenceSummary" : "Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
@@ -159,25 +159,21 @@ class TogetherMixtralClient:
         "1. Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
         "2. Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
         ],
-        "entities" : [
+        "entities_and_concepts" : [
         {{"name": "semiconductor", "type": "industry", "explanation": "Companies engaged in the design and fabrication of semiconductors and semiconductor devices"}},
         {{"name": "NBA", "type": "sport league", "explanation": "NBA is the national basketball league"}},
         {{"name": "Ford F150", "type": "vehicle", "explanation": "Article talks about the Ford F150 truck"}},
-        ],
-        "concepts_ideas": [
-            {{"concept": "mobile game soft launch", "explanation": "Mobile game soft launch is a process of releasing a game to a limited audience for testing."}},
-            {{"concept": "US Civil War", "explanation": "The American Civil War was a civil war in the United States between the Union and the Confederacy, which had been formed by states that had seceded from the Union. The central cause of the war was the dispute over whether slavery would be permitted to expand into the western territories, leading to more slave states, or be prevented from doing so, which many believed would place slavery on a course of ultimate extinction."}},
-            {{"concet": "Capitalism", "explanation": Capitalism is an economic system based on the private ownership of the means of production and their operation for profit. Central characteristics of capitalism include capital accumulation, competitive markets, price system, private property, property rights recognition, voluntary exchange, and wage labor."}}    
-        ] 
-        }}"""
+        {{"name": "mobile game soft launch", "type": "concepts","explanation": "Mobile game soft launch is a process of releasing a game to a limited audience for testing."}},
+        {{"name": "US Civil War", "type": "concepts", "explanation": "The American Civil War was a civil war in the United States between the Union and the Confederacy, which had been formed by states that had seceded from the Union. The central cause of the war was the dispute over whether slavery would be permitted to expand into the western territories, leading to more slave states, or be prevented from doing so, which many believed would place slavery on a course of ultimate extinction."}},
+        {{"name": "Capitalism", "type": "concepts", "explanation": Capitalism is an economic system based on the private ownership of the means of production and their operation for profit. Central characteristics of capitalism include capital accumulation, competitive markets, price system, private property, property rights recognition, voluntary exchange, and wage labor."}}
+        ]}"""
 
         self._user_content_2_task = """Use the examples above to answer the following questions.
         1. Summarize the article in one sentence. Limit the answer to twenty words.
-        2. Summarize the article in multiple bullet-points. Each bullet-point need to have betweeen ten to tweenty words. Limit the number of bullet points must below six.
-        3. Identify ten entities (companies, people, location, products....) mentioned in the article. Include short explanation for each entity.
-        4. Identify three concepts or ideas mentioned in the article. Include short explanation for each concept or idea.
+        2. Summarize the article up to six bullet-points. Each bullet-point need to have betweeen ten to tweenty words. Limit the number of bullet points must below six.
+        3. Identify no more then ten entities, concepts and ideas (companies, people, location, products....) mentioned in the article. Include short explanation of each.
 
-        Use the JSON format above to output your answer. Only output valid JSON format."""
+        Use the JSON format above to output your answer. Only output valid JSON format. Reduce the length of the answer to make sure the JSON is valid."""
 
         self._user_content_3_article = """Article: {BODY}"""
 
@@ -254,7 +250,6 @@ class TogetherMixtralClient:
                     "content": self._user_content_3_article.format(BODY=body_text),
                 },
             ],
-            "max_tokens": 1024,
             "temperature": temperature,
             "top_p": top_p,
             "top_k": top_k,

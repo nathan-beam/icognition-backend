@@ -115,7 +115,6 @@ class DocumentPlus(SQLModel, table=False):
     """
 
     document: Document
-    concepts: Optional[List[Concept]]
     entities: Optional[List[Entity]]
 
 
@@ -131,17 +130,10 @@ class IdentifyEntity(BaseModel):
     explanation: Optional[str]
 
 
-class IdentifyConceptIdea(BaseModel):
-    concept: Optional[str] = Field(default=None)
-    explanation: Optional[str] = Field(default=None)
-
-
 class DocumentJsonForLLMS(BaseModel):
     oneSentenceSummary: Optional[str]
     summaryInNumericBulletPoints: Optional[List[str]]
-
-    entities: Optional[List[IdentifyEntity]]
-    concepts_ideas: Optional[List[IdentifyConceptIdea]]
+    entities_and_concepts: Optional[List[IdentifyEntity]]
     usage: Optional[str]
 
 
@@ -153,9 +145,24 @@ class DocumentDisplay(BaseModel):
     publicationDate: Optional[str] = None
     llmServiceMeta: Optional[Dict] = None
     status: Optional[str] = None
-    updateAt: Optional[str] = None
+    updateAt: Optional[datetime] = None
     oneSentenceSummary: Optional[str] = None
     tldr: Optional[List[str]] = None
-    entities: Optional[List[Entity]] = None
-    concepts_ideas: Optional[List[Concept]] = None
+    entities_and_concepts: Optional[List[Entity]] = None
     usage: Optional[str] = None
+
+    @classmethod
+    def from_orm(cls, document: Document, entities: List[Entity] = None):
+        return cls(
+            id=document.id,
+            title=document.title,
+            url=document.url,
+            authors=document.authors,
+            tldr=document.summary_bullet_points,
+            publicationDate=document.publication_date,
+            llmServiceMeta=document.llm_service_meta,
+            status=document.status,
+            updateAt=document.update_at,
+            oneSentenceSummary=document.short_summary,
+            entities_and_concepts=entities,
+        )
