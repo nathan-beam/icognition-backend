@@ -29,6 +29,15 @@ class HTTPError(SQLModel, table=False):
     detail: Optional[str] = Field(default=None)
 
 
+class SearchPayload(SQLModel, table=False):
+    """
+    Represents the payload for a search, including the query and user ID.
+    """
+
+    query: Optional[str] = Field(default=None)
+    user_id: Optional[str] = Field(default=None)
+
+
 class Page(SQLModel, table=False):
     """
     Represents a web page with its clean URL, title, author, paragraphs, and full text.
@@ -107,15 +116,6 @@ class Concept(SQLModel, table=True):
     name: str = Field(default=None)
     description: str = Field(default=None, nullable=True)
     source: str = Field(default=None, nullable=True)
-
-
-class DocumentPlus(SQLModel, table=False):
-    """
-    Represents a document with additional information, including its Document object, concepts, and entities.
-    """
-
-    document: Document
-    entities: Optional[List[Entity]]
 
 
 """ 

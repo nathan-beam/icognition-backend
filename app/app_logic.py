@@ -4,13 +4,23 @@ import logging
 import os, re
 from app import html_parser
 from app.db_connector import get_engine
-from app.models import Bookmark, Entity, Page, Document, PagePayload
+from app.models import Bookmark, Entity, Page, Document, PagePayload, DocumentDisplay
 from app.together_api_client import (
     TogetherMixtralOpenAIClient,
     TogetherMixtralClient,
     ApiCallException,
 )
-from sqlalchemy import select, delete, create_engine, and_, Integer, String, func
+from sqlalchemy import (
+    select,
+    delete,
+    create_engine,
+    and_,
+    or_,
+    Integer,
+    String,
+    func,
+    text,
+)
 from sqlalchemy.orm import Session
 
 
@@ -51,7 +61,6 @@ def delete_bookmark_and_associate_records(bookmark_id) -> None:
         session.execute(delete(Document).where(Document.id == doc.id))
         session.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
         session.execute(delete(Entity).where(Entity.document_id == doc.id))
-        session.execute(delete(Concept).where(Concept.document_id == doc.id))
         session.commit()
         logging.info(f"Bookmark {bookmark_id} and associated records deleted")
 
@@ -152,11 +161,14 @@ def create_document(page: Page):
 
 
 def clone_document(doc: Document):
+
+    old_doc = get_document_by_id(doc.id)
+
     ## Clone document. This is used when regenerasting a document, we keep the old document and it's related objects
     new_doc = Document()
-    new_doc.title = doc.title
-    new_doc.url = doc.url
-    new_doc.original_text = doc.original_text
+    new_doc.title = old_doc.title
+    new_doc.url = old_doc.url
+    new_doc.original_text = old_doc.original_text
 
     with Session(engine) as session:
         session.add(new_doc)
@@ -164,7 +176,7 @@ def clone_document(doc: Document):
         session.refresh(new_doc)
 
         # Update the old document to show it was cloned
-        doc.status = "Cloned"
+        old_doc.status = "Cloned"
         return new_doc
 
 
@@ -189,19 +201,22 @@ def reassociate_bookmark_with_document(old_document_id, new_document_id):
         bookmark = session.scalar(
             select(Bookmark).where(Bookmark.document_id == old_document_id)
         )
-        if bookmark:
-            bookmark.document_id = new_document_id
-            bookmark.cloned_documents.append(old_document_id)
+        if bookmark is None:
+            logging.error(f"Bookmark with document {old_document_id} not found")
+            return None
 
-            session.commit()
-            logging.info(
-                f"Bookmark {bookmark.id} reassociated with document {new_document_id}"
-            )
-        else:
-            logging.error(f"Bookmark {bookmark.id} not found")
+        bookmark.document_id = new_document_id
+        bookmark.cloned_documents.append(old_document_id)
+
+        session.commit()
+        session.refresh(bookmark)
+        logging.info(
+            f"Bookmark {bookmark.id} reassociated with document {new_document_id}"
+        )
+        return bookmark
 
 
-def extract_info_from_doc(doc: Document):
+async def extract_info_from_doc(doc: Document):
     """
     Function that takes pages and return a document with the generated summary,
     bullet points and entities generate by LLM
@@ -212,7 +227,7 @@ def extract_info_from_doc(doc: Document):
 
     try:
         logging.info(f"Generating summary for document {doc.id}")
-        response = mixtralClient.generate(doc.original_text)
+        response = await mixtralClient.generate(doc.original_text)
         logging.info(f"Response from LLM {response}")
 
     except ApiCallException as e:
@@ -317,6 +332,15 @@ def get_bookmarks_by_user_id(user_id: str) -> list[Bookmark]:
     return bookmarks
 
 
+def get_bookmark_by_document_id(document_id: int) -> Bookmark:
+    session = Session(engine)
+    bookmark = session.scalar(
+        select(Bookmark).where(Bookmark.document_id == document_id)
+    )
+    session.close()
+    return bookmark
+
+
 def get_bookmark_by_url(url: str) -> Bookmark:
     url = html_parser.clean_url(url)
     session = Session(engine)
@@ -346,3 +370,116 @@ def get_entities_by_document_id(document_id) -> list[Entity]:
     ).all()
     session.close()
     return entities
+
+
+def get_entities_by_user_id(user_id: str) -> list[Entity]:
+    session = Session(engine)
+    entities = session.scalars(
+        select(Entity)
+        .join(Document, Document.id == Entity.document_id)
+        .join(Bookmark, Bookmark.document_id == Document.id)
+        .where(Bookmark.user_id == user_id)
+    ).all()
+    session.close()
+    return entities
+
+
+def get_entities_by_user_id_and_type(user_id: str, type: str) -> list[Entity]:
+    session = Session(engine)
+    entities = session.scalars(
+        select(Entity)
+        .join(Document, Document.id == Entity.document_id)
+        .join(Bookmark, Bookmark.document_id == Document.id)
+        .where(Bookmark.user_id == user_id, Entity.type == type)
+    ).all()
+    session.close()
+    return entities
+
+
+def get_documenets_by_entity_id(entity_id: int) -> list[Document]:
+    session = Session(engine)
+    documents = session.scalars(
+        select(Document)
+        .join(Entity, Entity.document_id == Document.id)
+        .where(Entity.id == entity_id)
+    ).all()
+    session.close()
+    return documents
+
+
+def get_entities_tree_by_user_id(user_id: str) -> list:
+    session = Session(engine)
+    queryTypes = text(
+        """select e.type 
+	            from entity e
+	            join document d on e.document_id = d.id
+	            join bookmark b on b.document_id = d.id
+	            where b.user_id = '{USER_ID}'
+	        group by 1""".format(
+            USER_ID=user_id
+        )
+    )
+
+    types = session.execute(queryTypes).fetchall()
+    nodes = []
+    for index, type in enumerate(types):
+        node = {}
+        node["key"] = str(index)
+        node["label"] = type[0]
+        node["data"] = type[0] + " folder"
+        node["children"] = []
+
+        entities_nodes = get_entities_by_user_id_and_type(user_id, type[0])
+        for index2, entity in enumerate(entities_nodes):
+            entity_node = {}
+            entity_node["key"] = node["key"] + "-" + str(index2)
+            entity_node["label"] = entity.name
+            entity_node["data"] = entity.name + " entity"
+            entity_node["children"] = []
+
+            node["children"].append(entity_node)
+
+            documents = get_documenets_by_entity_id(entity.id)
+            for index3, document in enumerate(documents):
+                document_node = {}
+                document_node["key"] = entity_node["key"] + "-" + str(index3)
+                document_node["label"] = document.title
+                document_node["data"] = document.title + " document"
+                entity_node["children"].append(document_node)
+        nodes.append(node)
+
+    session.close()
+    return nodes
+
+
+def search_documents(user_id: str, search_term: str = None) -> list[Document]:
+    session = Session(engine)
+
+    if search_term is None:
+        documents = session.scalars(
+            select(Document)
+            .join(Bookmark, Bookmark.document_id == Document.id)
+            .filter(Bookmark.user_id == user_id)
+        ).all()
+    else:
+        documents = session.scalars(
+            select(Document)
+            .join(Bookmark, Bookmark.document_id == Document.id)
+            .filter(
+                Bookmark.user_id == user_id,
+                or_(
+                    Document.title.ilike(f"%{search_term}%"),
+                    Document.short_summary.ilike(f"%{search_term}%"),
+                ),
+            )
+        ).all()
+
+    session.close()
+
+    results = []
+    for document in documents:
+        entities = get_entities_by_document_id(document.id)
+        display = DocumentDisplay.from_orm(document, entities=entities)
+        results.append(display)
+
+    return results

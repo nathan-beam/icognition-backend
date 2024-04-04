@@ -6,6 +6,8 @@ import sys
 import re
 import json
 import openai
+import aiohttp
+import asyncio
 from time import sleep
 from transformers import AutoTokenizer
 from app.icog_util import truncate_text
@@ -145,6 +147,14 @@ class TogetherMixtralClient:
         self._retry_sleep = 30
         self._retry_attempts = 0
         self._retry_max_attempts = 2
+        self._client_session = aiohttp.ClientSession(
+            headers={
+                "Authorization": f"Bearer {self._api_token}",
+                "content-type": "application/json",
+                "accept": "application/json",
+                "User-Agent": "Icognition App",
+            }
+        )
 
         self._system_content = """You are a researcher task with answering questions about an article.  
         Please ensure that your responses are socially unbiased and positive in nature.
@@ -185,49 +195,25 @@ class TogetherMixtralClient:
 
         return results
 
-    def api_call(self, payload) -> dict:
+    async def api_call(self, payload) -> dict:
         API_URL = self._api_url
-        headers = {
-            "Authorization": f"Bearer {self._api_token}",
-            "content-type": "application/json",
-            "accept": "application/json",
-            "User-Agent": "Icognition App",
-        }
-
-        response = requests.post(API_URL, headers=headers, json=payload)
-        # Check if the response is valid
-        status = response.status_code
-        # In case the service isn't ready or overloaded
-        if status != 200:
-            logging.info(
-                f"API Call Error: {response.content}. Status code: {response.status_code}"
-            )
-            raise ApiCallException(
-                "Error during API call",
-                {
-                    "status_code": response.status_code,
-                    "content": response.content,
-                    "reason": response.reason,
-                },
-            )
-
-        elif response.status_code == 200:
-            try:
-                results = response.json()
-                logging.info(
-                    f"API Call successful. Status code {response.status_code}. Generated text length: {len(results)}"
+        async with self._client_session.post(API_URL, json=payload) as res:
+            status = res.status
+            if status == 200:
+                return await res.json()
+            else:
+                logging.info(f"API Call Error: {res.reason}. Status code: {status}")
+                raise ApiCallException(
+                    "Error during API call",
+                    {
+                        "status_code": status,
+                        "content": str(res.content._exception),
+                        "reason": res.reason,
+                    },
                 )
-                return results
-            except json.JSONDecodeError:
-                logging.error(f"Error decoding JSON response: {response}")
-                raise json.JSONDecodeError
-        else:
-            logging.error(
-                f"Response from HF API isn't right. Status code: {response.status_code} Contenct {response.content}"
-            )
-            return None
+                return None
 
-    def generate(
+    async def generate(
         self,
         body_text: str,
         template: PromptTemplates = InclusiveTemplate(),
@@ -260,7 +246,6 @@ class TogetherMixtralClient:
             },
         }
 
-        logging.info(f"Sending query to API with template: {template.__name__}...")
         continue_loop = True
         self._retry_attempts = 0
 
@@ -268,14 +253,10 @@ class TogetherMixtralClient:
             try:
                 self._retry_attempts += 1
                 logging.debug(f"Attempt {self._retry_attempts} to generate summary")
-                res = self.api_call(payload)
+                res = await self.api_call(payload)
                 logging.debug(f"Response status: {res['status']}")
 
             except ApiCallException as e:
-                logging.error(f"Error calling API and/or handleResponse: {e}")
-                raise e
-
-            except Exception as e:
                 logging.error(f"Error calling API and/or handleResponse: {e}")
                 raise e
 

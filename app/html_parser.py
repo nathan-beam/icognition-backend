@@ -46,7 +46,7 @@ def get_webpage(payload: PagePayload) -> BeautifulSoup:
         return None
 
 
-def get_paragraphs(soup: BeautifulSoup) -> list[str]:
+def find_main_article_element(soup: BeautifulSoup) -> list[str]:
 
     articles = []
     selectors = ["article", "div#article", "div.article-body", "div.article", "main"]
@@ -75,9 +75,13 @@ def get_paragraphs(soup: BeautifulSoup) -> list[str]:
     # Select the article element with the most content
     main_article = articles[content_estimator.index(max(content_estimator))]
 
+    return main_article
+
+
+def get_paragraphs(soup: BeautifulSoup) -> list[str]:
     header_pattern = re.compile(r"h\d")
     text_elements = []
-    for element in main_article.find_all(["p", "h1", "h2", "h3"]):
+    for element in soup.find_all(["p", "h1", "h2", "h3"]):
         ## Collect only paragraph and headers with enough content
         if element.name == "p" and len(element.text.split(" ")) > 8:
             text_elements.append(element.text)
@@ -139,14 +143,16 @@ def create_page(payload: PagePayload) -> Page:
         logging.error("No webpage found")
         return None
 
-    paragraphs = get_paragraphs(html)
+    article_element = find_main_article_element(html)
+
+    paragraphs = get_paragraphs(article_element)
 
     if paragraphs is None:
         logging.error("No paragraphs found in webpage")
         return None
 
-    title = get_title(html)
-    author = extract_author_medium(html)
+    title = get_title(article_element)
+    author = extract_author_medium(article_element)
 
     page = Page()
     page.clean_url = clean_url(payload.url)

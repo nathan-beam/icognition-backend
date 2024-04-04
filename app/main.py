@@ -3,10 +3,18 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from app.models import Bookmark, Document, PagePayload, DocumentPlus, DocumentDisplay
+from app.models import (
+    Bookmark,
+    Document,
+    PagePayload,
+    DocumentDisplay,
+    HTTPError,
+    SearchPayload,
+)
 import logging
-import sys, re
+import sys, re, time
 import uvicorn
+import re
 import app.app_logic as app_logic
 import urllib.parse as urlparse
 
@@ -56,19 +64,35 @@ async def validation_exception_handler(request, exc):
     return PlainTextResponse(str(request), status_code=400)
 
 
-@app.post("/bookmark", response_model=Bookmark, status_code=201)
-async def create_bookmark(payload: PagePayload, background_tasks: BackgroundTasks):
-    """file_name = f'../data/icog_pages/{page.clean_url}.json'
-    with open(file_name, "w") as fp:
-        json.dump(page.dict(), fp)
-    """
+@app.post(
+    "/bookmark",
+    responses={
+        400: {
+            "model": HTTPError,
+            "description": "Reporting back errors",
+        },
+        201: {"model": Bookmark, "description": "Bookmark created successfully"},
+    },
+)
+async def create_bookmark(
+    payload: PagePayload, background_tasks: BackgroundTasks, response: Response
+):
+
     logging.info(f"Icognition bookmark endpoint called on {payload.url}")
 
     if payload.user_id == None:
         logging.warn(f"User ID not provided for {payload.url}")
         raise HTTPException(
-            status_code=204,
+            status_code=400,
             detail="User ID not provided for the bookmark",
+        )
+
+    # Check if payload.url is not the root URL of a website
+    if re.match(r"^https?://[^/]+/$", payload.url):
+        logging.warn(f"Invalid URL provided: {payload.url}")
+        raise HTTPException(
+            status_code=400,
+            detail="I am sorry, I can't analyze home pages",
         )
 
     page = app_logic.create_page(payload)
@@ -76,20 +100,22 @@ async def create_bookmark(payload: PagePayload, background_tasks: BackgroundTask
     if page is None:
         logging.warn(f"Page object not created for {payload.url}")
         raise HTTPException(
-            status_code=204,
-            detail="The webpage doesn't have article and paragraph elements",
+            status_code=400,
+            detail="Hmm, I wasn't able to find information on this page. I sent a message to our engineers",
         )
 
     ## Check in bookmark already exists
     bookmark = app_logic.get_bookmark_by_url(page.clean_url)
     if bookmark is not None:
         logging.info(f"Bookmark already exists for {page.clean_url}")
+        response.status_code = status.HTTP_201_CREATED
         return bookmark
     else:
         logging.info(f"Page object created for {page.clean_url}")
         bookmark = app_logic.create_bookmark(page, payload.user_id)
         logging.info(f"Bookmark created for {bookmark.url}")
         background_tasks.add_task(generate_document, bookmark.document_id)
+        response.status_code = status.HTTP_201_CREATED
         return bookmark
 
 
@@ -98,20 +124,27 @@ async def create_bookmark(payload: PagePayload, background_tasks: BackgroundTask
     response_model=Bookmark,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def regenerate_document(doc: Document, background_tasks: BackgroundTasks):
+async def post_regenerate_document(
+    old_doc: Document, background_tasks: BackgroundTasks
+):
     """
     This method create document using a bookmark id and a URL.
     Because create_bookmark also generate document, this method is use to re-generate
     the a document. Because it can take time to generate a document, this method
     kickoff the generate and return 202
     """
-    logging.info(f"Regenrate Document ID {doc.id}")
+    logging.info(f"Regenrate Document ID {old_doc.id}")
     # Generate LLM content in a background process
-    background_tasks.add_task(regenerate_document, doc)
 
     # Reason for returning bookmark is because the document will changed after the regeneration,
     # and the bookmark will be used to get the new document
-    bookmark = app_logic.get_bookmark_by_document_id(doc.id)
+    new_doc = app_logic.clone_document(old_doc)
+    background_tasks.add_task(regenerate_document, new_doc)
+    bookmark = app_logic.reassociate_bookmark_with_document(old_doc.id, new_doc.id)
+
+    if bookmark is None:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+
     return bookmark
 
 
@@ -121,26 +154,21 @@ async def generate_document(document_id):
 
     if document.status in ["Pending", "Done", "Failure"]:
         logging.info(f"Background task for document ID: {document_id}")
-        document = app_logic.extract_info_from_doc(document)
+        document = await app_logic.extract_info_from_doc(document)
         logging.info(f"Background task for document ID: {document_id} completed")
 
 
 ## Background task to regenerate summaries from LLM if not already exists
-async def regenerate_document(old_doc: Document):
+async def regenerate_document(doc: Document):
 
-    if old_doc.status in ["Pending", "Done", "Failure"]:
-        new_doc = app_logic.clone_document(old_doc)
+    if doc.status in ["Pending", "Done", "Failure"]:
 
-        logging.info(
-            f"Background task for clone and generating old document ID: {old_doc.id}, new document ID: {new_doc.id}"
-        )
-        new_doc = app_logic.extract_info_from_doc(new_doc)
+        new_doc = await app_logic.extract_info_from_doc(doc)
         if new_doc:
-            app_logic.reassociate_bookmark_with_document(old_doc.id, new_doc.id)
             logging.info(f"Background task for document ID: {new_doc.id} completed")
         else:
             logging.error(
-                f"Background document regenaring for document ID: {old_doc.id} failed"
+                f"Background document regenaring for document ID: {doc.id} failed"
             )
 
 
@@ -211,7 +239,7 @@ async def get_bookmark_document(id: int, response: Response):
 async def get_document_plus(bookmark_id: int, response: Response):
     """get document with entities and concepts"""
 
-    logging.info(f"Icognition document plus endpoint called on bookmark {bookmark_id}")
+    logging.info(f"Document plus -> endpoint called on bookmark {bookmark_id}")
     document = app_logic.get_document_by_bookmark_id(bookmark_id)
 
     if document is None:
@@ -220,11 +248,17 @@ async def get_document_plus(bookmark_id: int, response: Response):
     # If document is still in processing, let the client know
     if document.status in ["Processing", "Pending"]:
         response.status_code = status.HTTP_206_PARTIAL_CONTENT
-        return None
+        logging.info(
+            f"Document plus -> endpoint called on document status {document.status}"
+        )
+        return DocumentDisplay.from_orm(document)
     elif document.status == "Done":
         entities = app_logic.get_entities_by_document_id(document.id)
 
         response.status_code = status.HTTP_200_OK
+        logging.info(
+            f"Document plus -> endpoint called on document status {document.status}"
+        )
         return DocumentDisplay.from_orm(document, entities=entities)
     else:
         response.status_code = status.HTTP_404_NOT_FOUND
@@ -284,3 +318,24 @@ async def delete_bookmark(id: int) -> None:
 async def delete_document(id: int) -> None:
     logging.info(f"Delete document and associated records for id: {id}")
     app_logic.delete_document_and_associate_records(id)
+
+
+@app.get("/entities/{user_id}", response_model=List, status_code=200)
+async def post_entities_tree(user_id: str):
+    logging.info(f"Post entities tree")
+    entities = app_logic.get_entities_by_user_id(user_id)
+    return entities
+
+
+@app.get("/entities_tree/{user_id}", response_model=List, status_code=200)
+async def post_entities_tree(user_id: str):
+    logging.info(f"Post entities tree")
+    entities = app_logic.get_entities_tree_by_user_id(user_id)
+    return entities
+
+
+@app.post("/search", response_model=List[DocumentDisplay], status_code=200)
+async def search_documents(search_payload: SearchPayload):
+    logging.info(f"Search documents")
+    documents = app_logic.search_documents(search_payload.user_id, search_payload.query)
+    return documents
