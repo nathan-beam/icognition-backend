@@ -165,23 +165,25 @@ class TogetherMixtralClient:
 
         JSON Output: {{
         "oneSentenceSummary" : "Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
+        "whatThisArticleIsAbout" : "Mobile game soft launch",
         "summaryInNumericBulletPoints" : [
         "1. Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
         "2. Mobile game soft launch is a process of releasing a game to a limited audience for testing.",
         ],
-        "entities_and_concepts" : [
+        "entities_and_topics" : [
         {{"name": "semiconductor", "type": "industry", "explanation": "Companies engaged in the design and fabrication of semiconductors and semiconductor devices"}},
         {{"name": "NBA", "type": "sport league", "explanation": "NBA is the national basketball league"}},
         {{"name": "Ford F150", "type": "vehicle", "explanation": "Article talks about the Ford F150 truck"}},
-        {{"name": "mobile game soft launch", "type": "concepts","explanation": "Mobile game soft launch is a process of releasing a game to a limited audience for testing."}},
-        {{"name": "US Civil War", "type": "concepts", "explanation": "The American Civil War was a civil war in the United States between the Union and the Confederacy, which had been formed by states that had seceded from the Union. The central cause of the war was the dispute over whether slavery would be permitted to expand into the western territories, leading to more slave states, or be prevented from doing so, which many believed would place slavery on a course of ultimate extinction."}},
-        {{"name": "Capitalism", "type": "concepts", "explanation": Capitalism is an economic system based on the private ownership of the means of production and their operation for profit. Central characteristics of capitalism include capital accumulation, competitive markets, price system, private property, property rights recognition, voluntary exchange, and wage labor."}}
+        {{"name": "mobile game soft launch", "type": "topic","explanation": "Mobile game soft launch is a process of releasing a game to a limited audience for testing."}},
+        {{"name": "US Civil War", "type": "topic", "explanation": "The American Civil War was a civil war in the United States between the Union and the Confederacy, which had been formed by states that had seceded from the Union. The central cause of the war was the dispute over whether slavery would be permitted to expand into the western territories, leading to more slave states, or be prevented from doing so, which many believed would place slavery on a course of ultimate extinction."}},
+        {{"name": "Capitalism", "type": "topic", "explanation": Capitalism is an economic system based on the private ownership of the means of production and their operation for profit. Central characteristics of capitalism include capital accumulation, competitive markets, price system, private property, property rights recognition, voluntary exchange, and wage labor."}}
         ]}"""
 
         self._user_content_2_task = """Use the examples above to answer the following questions.
         1. Summarize the article in one sentence. Limit the answer to twenty words.
-        2. Summarize the article up to six bullet-points. Each bullet-point need to have betweeen ten to tweenty words. Limit the number of bullet points must below six.
-        3. Identify no more then ten entities, concepts and ideas (companies, people, location, products....) mentioned in the article. Include short explanation of each.
+        2. Three to fours words explaining what the article is about.
+        3. Summarize the article up to six bullet-points. Each bullet-point need to have betweeen ten to tweenty words. Limit the number of bullet points must below six.
+        4. Identify no more then ten entities, topics and ideas (companies, people, location, products....) mentioned in the article. Include short explanation of each.
 
         Use the JSON format above to output your answer. Only output valid JSON format. Reduce the length of the answer to make sure the JSON is valid."""
 

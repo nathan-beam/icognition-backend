@@ -236,7 +236,7 @@ async def get_bookmark_document(id: int, response: Response):
 
 
 @app.get("/document_plus/{bookmark_id}", response_model=DocumentDisplay)
-async def get_document_plus(bookmark_id: int, response: Response):
+async def get_document_plus(bookmark_id: int, response: Response, background_tasks: BackgroundTasks):
     """get document with entities and concepts"""
 
     logging.info(f"Document plus -> endpoint called on bookmark {bookmark_id}")
@@ -259,6 +259,10 @@ async def get_document_plus(bookmark_id: int, response: Response):
         logging.info(
             f"Document plus -> endpoint called on document status {document.status}"
         )
+
+        # Generate embeddings for the document
+        background_tasks.add_task(generate_embedding)
+
         return DocumentDisplay.from_orm(document, entities=entities)
     else:
         response.status_code = status.HTTP_404_NOT_FOUND
@@ -282,17 +286,6 @@ async def get_document(id: int, response: Response):
         return document
 
 
-@app.get("/document/{id}/concepts")
-async def get_concepts(id: int, response: Response):
-    logging.info(f"Icognition document concepts endpoint called on {id}")
-    concepts = app_logic.get_concepts_by_document_id(id)
-
-    if concepts is None:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        raise HTTPException(status_code=404, detail="Concepts not found")
-    else:
-        response.status_code = status.HTTP_200_OK
-        return concepts
 
 
 @app.get("/document/{id}/entities")
@@ -337,5 +330,20 @@ async def post_entities_tree(user_id: str):
 @app.post("/search", response_model=List[DocumentDisplay], status_code=200)
 async def search_documents(search_payload: SearchPayload):
     logging.info(f"Search documents")
-    documents = app_logic.search_documents(search_payload.user_id, search_payload.query)
+    
+    if(search_payload.query == None):
+        documents = app_logic.search_documents(search_payload.user_id, search_payload.query)
+    else:
+        documents = app_logic.search_embeddings(search_payload.user_id, search_payload.query)
+
     return documents
+
+
+@app.get("/generate_embedding", status_code=200)
+async def generate_embedding():
+    try:
+        await app_logic.generate_documents_embeddings()
+        return {"Message": "Embedding generation completed"}
+    except Exception as e:
+        logging.error(e)
+        raise HTTPException(status_code=500, detail="Embedding generation failed")

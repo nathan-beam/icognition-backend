@@ -2,9 +2,18 @@ import datetime
 import sys
 import logging
 import os, re
+import app.transformers_util
 from app import html_parser
 from app.db_connector import get_engine
-from app.models import Bookmark, Entity, Page, Document, PagePayload, DocumentDisplay
+from app.models import (
+    Bookmark,
+    Entity,
+    Page,
+    Document,
+    PagePayload,
+    DocumentDisplay,
+    Document_Embeddings,
+)
 from app.together_api_client import (
     TogetherMixtralOpenAIClient,
     TogetherMixtralClient,
@@ -249,6 +258,11 @@ async def extract_info_from_doc(doc: Document):
             doc.short_summary = response.oneSentenceSummary
         else:
             doc.short_summary = "No summary was generated"
+        
+        if response.whatThisArticleIsAbout:
+            doc.is_about = response.whatThisArticleIsAbout
+        else:
+            doc.is_about = "No article is about was generated"
 
         if response.summaryInNumericBulletPoints:
             doc.summary_bullet_points = [
@@ -471,7 +485,7 @@ def search_documents(user_id: str, search_term: str = None) -> list[Document]:
                     Document.title.ilike(f"%{search_term}%"),
                     Document.short_summary.ilike(f"%{search_term}%"),
                 ),
-            )
+            ).order_by(Document.update_at.desc())
         ).all()
 
     session.close()
@@ -481,5 +495,72 @@ def search_documents(user_id: str, search_term: str = None) -> list[Document]:
         entities = get_entities_by_document_id(document.id)
         display = DocumentDisplay.from_orm(document, entities=entities)
         results.append(display)
+
+    return results
+
+
+async def generate_documents_embeddings():
+    """
+    This function generates embeddings for a list of documents
+    """
+
+    ## Get Documents that don't have embeddings, by joining with DocumentEmbeddings
+    with Session(engine) as session:
+        documents = session.scalars(
+            select(Document)
+            .join(
+                Document_Embeddings,
+                Document_Embeddings.document_id == Document.id,
+                isouter=True,
+            )
+            .filter(Document_Embeddings.id == None)
+        ).all()
+
+    try:
+        embeddings = await app.transformers_util.get_document_embeddings(documents)
+    except Exception as e:
+        logging.error(f"Error generating embeddings {e}")
+        raise e
+
+    try:
+         with Session(engine) as session:
+            session.add_all(embeddings)
+            session.commit()
+    except Exception as e:
+        logging.error(f"Error saving embeddings {e}")
+        raise e
+
+
+def search_embeddings(user_id: str, search_term: str) -> list[DocumentDisplay]:
+    """
+    This function searches for document embeddings by search term
+    """
+    logging.info(f"Generate embeddings for term {search_term}")
+    embedded_term = app.transformers_util.generate_embeddings(search_term) ## Generate embeddings for search term
+    logging.info(f"Embeddings for term {search_term} are length is {len(embedded_term)}")
+
+    # Get document with some embeddings that are closest to the search term
+    logging.info(f"Searching for documents with embeddings closest to term {search_term}")
+
+    with Session(engine) as session:
+        stmt = text("""SELECT a.document_id, a.cosine_similarity
+                    FROM (SELECT de.document_id, MIN(1 - (de.embeddings <=> :vector)) AS cosine_similarity 
+                        FROM document_embeddings AS de
+                        JOIN bookmark ON de.document_id = bookmark.document_id
+                        WHERE bookmark.user_id = :user_id 
+                        GROUP BY de.document_id) a
+                    WHERE a.cosine_similarity > 0.05
+                    ORDER BY a.cosine_similarity DESC""")
+        
+        matched_documents = session.execute(stmt, {"vector": str(embedded_term.tolist()), "user_id": user_id}).all()
+        
+    logging.info(f"Found {len(matched_documents)} matched document for term {search_term}")
+
+    results = []
+    for md in matched_documents:
+        document = get_document_by_id(md[0])
+        entities = get_entities_by_document_id(md[0])
+        display = DocumentDisplay.from_orm(document, entities=entities, cosine_similarity=md[1])
+        results.append(display)    
 
     return results
